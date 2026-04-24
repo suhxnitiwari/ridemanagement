@@ -1,426 +1,558 @@
-<div align="center">
+# RideFlow
 
-# 🚗 RideFlow
+A role-based rideshare platform — React frontend, Node/Express REST API, PostgreSQL on Neon, Clerk authentication, Azure OpenAI GPT-4o, and Leaflet maps. Deployed on Render.
 
-### A full-stack rideshare platform built for MIS 372T at the University of Texas at Austin
+[![Node](https://img.shields.io/badge/node-%3E%3D18-brightgreen?style=flat-square)](https://nodejs.org)
+[![React](https://img.shields.io/badge/react-18.2-blue?style=flat-square)](https://react.dev)
+[![PostgreSQL](https://img.shields.io/badge/postgres-neon-blue?style=flat-square)](https://neon.tech)
+[![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)](LICENSE)
 
-[![React](https://img.shields.io/badge/React-18.2-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev)
-[![Vite](https://img.shields.io/badge/Vite-5.0-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vitejs.dev)
-[![Node.js](https://img.shields.io/badge/Node.js-Express-339933?style=for-the-badge&logo=node.js&logoColor=white)](https://nodejs.org)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Neon-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)](https://neon.tech)
-[![Clerk](https://img.shields.io/badge/Auth-Clerk-6C47FF?style=for-the-badge&logo=clerk&logoColor=white)](https://clerk.com)
-[![Azure](https://img.shields.io/badge/AI-Azure_OpenAI-0078D4?style=for-the-badge&logo=microsoftazure&logoColor=white)](https://azure.microsoft.com)
-[![Render](https://img.shields.io/badge/Deployed-Render-46E3B7?style=for-the-badge&logo=render&logoColor=black)](https://render.com)
+**Production:** [rideflow-frontend.onrender.com](https://rideflow-frontend.onrender.com) &nbsp;·&nbsp; **API:** [rideflow-server.onrender.com](https://rideflow-server.onrender.com)
 
-**[Live App →](https://rideflow-frontend.onrender.com)** &nbsp;|&nbsp; **[API →](https://rideflow-server.onrender.com)**
+---
 
-</div>
+## Table of Contents
+
+- [Overview](#overview)
+- [Production Database Snapshot](#production-database-snapshot)
+- [Architecture](#architecture)
+- [Tech Stack](#tech-stack)
+- [Feature Breakdown](#feature-breakdown)
+- [Database Schema](#database-schema)
+- [API Reference](#api-reference)
+- [Authentication & Authorization](#authentication--authorization)
+- [AI Integration](#ai-integration)
+- [Maps & Geocoding](#maps--geocoding)
+- [Fare Model](#fare-model)
+- [Project Structure](#project-structure)
+- [Local Development](#local-development)
+- [Environment Variables](#environment-variables)
+- [Deployment](#deployment)
+- [Design System](#design-system)
 
 ---
 
 ## Overview
 
-RideFlow is a production-grade rideshare web application that connects riders and drivers through a role-based platform. Riders book rides with real-time fare estimation and interactive maps, get AI-powered destination suggestions from Azure OpenAI GPT-4o, and track their full ride and payment history. Drivers manage availability and ride queues. Admins oversee the entire platform with full CRUD capabilities — all from a beautifully designed React frontend backed by a RESTful Express API and a serverless PostgreSQL database hosted on Neon.
+RideFlow is a multi-portal rideshare application with three distinct authenticated roles: **riders**, **drivers**, and **admins**. Each role is issued a Clerk-signed JWT containing a role claim that is verified independently on every API request — the client never has authority over its own permissions.
 
-Built as a semester capstone for **MIS 372T — Full-Stack Web Application Development** at the University of Texas at Austin, McCombs School of Business.
+Riders can book rides with real-time fare estimation derived from actual driving distance (OSRM), visualized on an interactive Leaflet map with Photon-powered address autocomplete. An Azure OpenAI GPT-4o endpoint, gated behind server-side role verification, provides destination activity suggestions. Admins manage the full rider and driver roster through a live CRUD interface backed by a Neon-hosted PostgreSQL database accessed via Sequelize ORM.
 
 ---
 
-## Live Database Stats
+## Production Database Snapshot
 
-> Numbers pulled live from the production Neon PostgreSQL instance.
+> Live counts from the Neon PostgreSQL instance at time of last README update.
 
-| Table | Records |
+| Entity | Count |
 |---|---|
-| 👤 Riders | **12** registered |
-| 🚙 Drivers | **11** registered |
-| 🗺️ Rides | **62** total |
-| 💳 Payments | **48** processed |
+| Riders | 12 |
+| Drivers | 11 |
+| Rides | 62 |
+| Payments processed | 48 |
 
-**Ride status breakdown:** 48 completed &nbsp;·&nbsp; 8 cancelled &nbsp;·&nbsp; 2 requested &nbsp;·&nbsp; 2 accepted &nbsp;·&nbsp; 1 en route &nbsp;·&nbsp; 1 in progress
+**Ride status distribution**
 
----
-
-## Features
-
-### Rider Portal
-- **Address Autocomplete** — powered by [Photon by Komoot](https://photon.komoot.io), biased toward Austin, TX (`lat=30.2672, lon=-97.7431`) for fast local results; dropdowns use `position: fixed` + `getBoundingClientRect()` to escape Leaflet's internal z-index stacking context
-- **Interactive Route Map** — [Leaflet](https://leafletjs.com) + [OpenStreetMap](https://openstreetmap.org) renders a live driving route between pickup and dropoff using the [OSRM public routing engine](http://project-osrm.org)
-- **Real-Time Fare Estimation** — fetches actual driving distance from OSRM, then applies a tiered fare model: base fare + per-mile rate + service fee, with a $5.00 minimum
-- **AI Destination Assistant** — enter any dropoff location and click "Suggest things to do" to receive 4–5 curated activity, food, and sightseeing suggestions powered by **Azure OpenAI GPT-4o** (deployment `2024-11-20`); route is protected behind `requireRider` middleware so only authenticated riders can invoke it
-- **Strata Chat Widget** — collapsible embedded AI chat assistant (workspace `mis372t`) via iframe for freeform trip questions
-- **Ride History** — full table of past rides sorted by most recent, with status badges, fare, date/time, and location data
-- **Transaction History** — complete payment ledger with payment method, amount, and status for every completed ride
-- **Cancel Ride Flow** — modal with reason selection dropdown and cancellation fee disclosure
-- **Dark / Light Theme** — dual-theme design system persisted to `localStorage`, toggle available in the portal navbar
-
-### Driver Portal
-- Dedicated driver dashboard with ride management
-- Status controls: available, on ride, offline
-
-### Admin Portal
-- Full CRUD for riders and drivers via sortable data tables
-- Live search with debounced input
-- Inline add/edit modals and delete confirmation dialogs
-- Toast notification system for every mutation (success + error states)
-- Role-restricted — only Clerk users with `admin` or `manager` in `publicMetadata` can access
-
-### Authentication & Authorization
-- **Clerk** handles sign-up, sign-in, OAuth, session management, and JWTs
-- Three distinct roles enforced on both frontend (`ProtectedRoute` component) and backend (Express middleware): `rider`, `driver`, `admin/manager`
-- Tokens auto-refresh every 55 seconds client-side; a fresh token is fetched immediately before each sensitive API call to prevent stale-token 401 failures
-- Onboarding page routes new users through role selection before granting portal access
-
----
-
-## Tech Stack
-
-### Frontend — `client/`
-
-| Technology | Version | Purpose |
-|---|---|---|
-| [React](https://react.dev) | 18.2 | UI framework |
-| [Vite](https://vitejs.dev) | 5.0 | Build tool & dev server with `/api` proxy |
-| [React Router DOM](https://reactrouter.com) | 7.14 | Client-side routing |
-| [Axios](https://axios-http.com) | 1.6 | HTTP client with global `Authorization` header |
-| [Clerk React](https://clerk.com/docs/references/react) | 6.4 | Authentication, session management, role guards |
-| [React Leaflet](https://react-leaflet.js.org) | 4.2 | Declarative interactive maps |
-| [Leaflet](https://leafletjs.com) | 1.9 | Underlying map engine |
-| [Photon by Komoot](https://photon.komoot.io) | — | Address autocomplete, Austin-biased |
-| [OSRM](http://project-osrm.org) | — | Real driving route & distance calculation |
-| [Nominatim](https://nominatim.org) | — | Geocoding: address string → lat/lon |
-| [Strata](https://strata.fyi) | — | Embedded AI chat widget (`workspace=mis372t`) |
-
-### Backend — `server/`
-
-| Technology | Version | Purpose |
-|---|---|---|
-| [Node.js](https://nodejs.org) + [Express](https://expressjs.com) | 4.18 | REST API server |
-| [Sequelize](https://sequelize.org) | 6.35 | ORM — model definitions, associations, migrations via `sync({ alter: true })` |
-| [pg](https://node-postgres.com) | 8.11 | PostgreSQL driver (SSL-enforced for Neon) |
-| [@clerk/express](https://clerk.com/docs/references/nodejs) | 2.1 | Server-side JWT verification middleware |
-| [cors](https://www.npmjs.com/package/cors) | 2.8 | Multi-origin allowlist (comma-separated env var) |
-| [dotenv](https://www.npmjs.com/package/dotenv) | 16.3 | Environment variable management |
-| [jose](https://www.npmjs.com/package/jose) | 5.9 | JWT utilities |
-
-### Infrastructure
-
-| Service | Purpose |
+| Status | Count |
 |---|---|
-| [Neon](https://neon.tech) | Serverless PostgreSQL — autoscale, branching, SSL, free tier |
-| [Render](https://render.com) | Cloud hosting — frontend (static site) + backend (web service) |
-| [Clerk](https://clerk.com) | Auth provider — user management, JWTs, `publicMetadata` roles |
-| [Azure AI Foundry](https://ai.azure.com) | GPT-4o deployment (`eastus2` region) for destination suggestions |
-| [GitHub](https://github.com) | Version control with push-protection for committed secrets |
+| completed | 48 |
+| cancelled | 8 |
+| requested | 2 |
+| accepted | 2 |
+| en_route | 1 |
+| in_progress | 1 |
 
 ---
 
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                     Browser  (Vite / React 18)                  │
-│                                                                 │
-│  ┌───────────────┐  ┌───────────────┐  ┌────────────────────┐  │
-│  │  Rider Portal │  │ Driver Portal │  │   Admin Portal     │  │
-│  │               │  │               │  │                    │  │
-│  │ • Book ride   │  │ • Ride queue  │  │ • Manage riders    │  │
-│  │ • Leaflet map │  │ • Status ctrl │  │ • Manage drivers   │  │
-│  │ • AI assist   │  │               │  │ • View all rides   │  │
-│  │ • Strata chat │  │               │  │                    │  │
-│  └───────┬───────┘  └───────┬───────┘  └─────────┬──────────┘  │
-│          │                  │                     │             │
-│  ┌───────▼──────────────────▼─────────────────────▼──────────┐  │
-│  │         Axios  +  Clerk JWT in Authorization header        │  │
-│  └──────────────────────────────┬─────────────────────────────┘  │
-└─────────────────────────────────┼──────────────────────────────┘
-                                  │ HTTPS
-                    ┌─────────────▼───────────────────┐
-                    │   Express API  (Render)          │
-                    │                                 │
-                    │  clerkMiddleware  (JWT decode)   │
-                    │  ─────────────────────────────  │
-                    │  /api/auth                       │
-                    │  /api/riders    ─┐               │
-                    │  /api/drivers   ├── CRUD         │
-                    │  /api/rides     │                │
-                    │  /api/payments ─┘               │
-                    │  /api/ai/destination-suggestions │
-                    │          └──► Azure OpenAI       │
-                    │               GPT-4o (eastus2)  │
-                    └──────────────┬──────────────────┘
-                                   │ Sequelize ORM  (SSL)
-                    ┌──────────────▼──────────────────┐
-                    │      Neon PostgreSQL             │
-                    │   (serverless · autoscale)       │
-                    │                                 │
-                    │  riders (12)   payments (48)     │
-                    │  drivers (11)  rides (62)        │
-                    └─────────────────────────────────┘
+                           ┌──────────────────────────────────────┐
+                           │            Render (static)            │
+                           │         React 18 + Vite 5.0           │
+                           │                                       │
+                           │  /              → HomePage            │
+                           │  /sign-in       → Clerk-hosted        │
+                           │  /onboarding    → role selection      │
+                           │  /rider         → RiderPortalPage     │
+                           │  /driver        → DriverPortalPage    │
+                           │  /admin         → AdminPage           │
+                           └──────────────────┬────────────────────┘
+                                              │
+                                     Axios + Bearer JWT
+                                     (refreshed every 55s
+                                      + on each sensitive call)
+                                              │
+                           ┌──────────────────▼────────────────────┐
+                           │            Render (web service)        │
+                           │        Node.js 18 + Express 4.18       │
+                           │                                       │
+                           │  clerkMiddleware  ← JWT decode        │
+                           │  CORS allowlist   ← env-configured    │
+                           │                                       │
+                           │  /api/auth          requireAuth       │
+                           │  /api/riders        requireAdmin      │
+                           │  /api/drivers       requireAdmin      │
+                           │  /api/rides         requireRider /    │
+                           │                     requireDriver     │
+                           │  /api/payments      requireRider      │
+                           │  /api/ai/…          requireRider ──── │──► Azure OpenAI
+                           └──────────────────┬────────────────────┘    GPT-4o (eastus2)
+                                              │
+                                   Sequelize ORM · SSL
+                                              │
+                           ┌──────────────────▼────────────────────┐
+                           │           Neon PostgreSQL              │
+                           │   Serverless · us-east-1 · autoscale   │
+                           │                                       │
+                           │   riders      drivers                 │
+                           │   rides       payments                │
+                           └────────────────────────────────────────┘
 ```
+
+External services called from the **browser** (no API key required):
+
+| Service | Purpose |
+|---|---|
+| Photon (Komoot) | Address autocomplete |
+| Nominatim (OSM) | Forward geocoding |
+| OSRM (public) | Driving route + distance |
+| OpenStreetMap tiles | Leaflet map rendering |
+| Strata (`mis372t`) | Embedded AI chat widget |
+
+---
+
+## Tech Stack
+
+### Client
+
+| Package | Version | Role |
+|---|---|---|
+| react | 18.2 | UI framework |
+| react-dom | 18.2 | DOM renderer |
+| react-router-dom | 7.14 | Client-side routing |
+| @clerk/react | 6.4 | Auth hooks, session management |
+| axios | 1.6 | HTTP client; global `Authorization` header via `setAuthToken` |
+| leaflet | 1.9 | Map engine |
+| react-leaflet | 4.2 | Declarative Leaflet bindings |
+| vite | 5.0 | Build tool; dev-server proxy for `/api` |
+
+### Server
+
+| Package | Version | Role |
+|---|---|---|
+| express | 4.18 | HTTP server and router |
+| sequelize | 6.35 | ORM; model definitions, associations, `sync({ alter: true })` |
+| pg / pg-hstore | 8.11 | PostgreSQL dialect + hstore serialization |
+| @clerk/express | 2.1 | `clerkMiddleware`, `getAuth`, `clerkClient` for server-side JWT handling |
+| cors | 2.8 | Origin allowlist; supports comma-separated `CLIENT_ORIGIN` |
+| dotenv | 16.3 | Environment variable loading |
+| jose | 5.9 | JWT utilities |
+
+### Infrastructure
+
+| Service | Plan | Purpose |
+|---|---|---|
+| [Neon](https://neon.tech) | Free tier | Serverless PostgreSQL — autoscale, branching, SSL |
+| [Render](https://render.com) | Free tier | Frontend (static site) + backend (web service) |
+| [Clerk](https://clerk.com) | Free tier | Auth provider — JWTs, `publicMetadata` role storage |
+| [Azure AI Foundry](https://ai.azure.com) | Pay-as-you-go | GPT-4o deployment, `eastus2` region |
+
+---
+
+## Feature Breakdown
+
+### Rider Portal
+
+**Ride booking**
+- Pickup and dropoff inputs with Photon-powered autocomplete, geo-biased to Austin TX (`lat=30.2672, lon=-97.7431`)
+- Dropdowns rendered via `position: fixed` + `getBoundingClientRect()` to escape Leaflet's internal z-index stacking context (Leaflet creates pane layers at z-index 200–600)
+- Coordinates resolved via Nominatim forward geocoding; route fetched from OSRM `/route/v1/driving/` to obtain real driving distance in meters and duration in seconds
+- Fare breakdown rendered in real-time as addresses are entered
+- Clerk token is explicitly refreshed via `getToken()` immediately before each POST to prevent stale-JWT 401s between the 55-second auto-refresh cycles
+
+**AI destination assistant**
+- On demand: rider enters a dropoff, clicks "Suggest things to do"
+- POST to `/api/ai/destination-suggestions` — verified by `requireRider` middleware before forwarding to Azure OpenAI
+- Response is plain-text numbered list (no markdown); prompt explicitly instructs the model to omit asterisks, bold, and other formatting
+
+**History & transactions**
+- Ride history table: sorted by `created_at DESC`, with status badges, fare, and formatted timestamps
+- Transactions table: payment method, amount, and status for every linked payment record
+
+**Strata chat**
+- Embedded via `<iframe src="https://strata.fyi/embed?workspace=mis372t">`, collapsed by default
+- Strata's embed stylesheet (`widget.css`) is intentionally **not** loaded in `index.html` — it injects a full-page fixed overlay that blocks all pointer events on the parent document
+
+### Admin Portal
+
+- Full CRUD for `riders` and `drivers` tables via data tables with debounced search
+- Add/edit via modal forms with client-side validation
+- Soft-delete confirmation dialogs
+- Toast notification stack for all async operations
+- Access requires `role: admin` or `role: manager` in Clerk `publicMetadata`
+
+### Authentication
+
+- Clerk handles sign-up, sign-in, and OAuth flows
+- After sign-up, users are routed to `/onboarding` where they select a role; that role is written to Clerk `publicMetadata` and persists across sessions
+- `ProtectedRoute` component reads role from Clerk and redirects unauthorized access
+- `AuthSync` component runs in `App.jsx`, refreshes the Clerk token every 55 seconds via `getToken({ skipCache: false })`, and updates the global Axios `Authorization` header
 
 ---
 
 ## Database Schema
 
-Hosted on **[Neon](https://neon.tech)** — a serverless PostgreSQL platform with branching, autoscaling compute, and SSL-enforced connections via `channel_binding=require`. All tables are managed through **Sequelize ORM** with `sync({ alter: true })` on startup — schema changes apply automatically with no data loss.
+All tables managed by Sequelize on **Neon PostgreSQL**. Schema changes are applied non-destructively via `sync({ alter: true })` on every server start.
 
-### `riders` — 12 records
-| Column | Type | Notes |
-|---|---|---|
-| `rider_id` | SERIAL PK | Auto-increment |
-| `first_name` | VARCHAR | Not null |
-| `last_name` | VARCHAR | Not null |
-| `email` | VARCHAR | Unique, email-format validated |
-| `phone_number` | VARCHAR | |
-| `default_payment_method` | VARCHAR | `credit_card` \| `debit_card` \| `paypal` \| `apple_pay` \| `google_pay` |
-| `rating` | DECIMAL(3,2) | 1.00–5.00, default 5.00 |
-| `clerk_user_id` | VARCHAR | Unique; links Neon row to Clerk identity |
-| `active` | BOOLEAN | Default true |
-| `created_at` / `updated_at` | TIMESTAMP | Sequelize auto-managed |
+### `riders`
 
-### `drivers` — 11 records
-| Column | Type | Notes |
-|---|---|---|
-| `driver_id` | SERIAL PK | |
-| `first_name` / `last_name` | VARCHAR | Not null |
-| `email` | VARCHAR | Unique |
-| `phone_number` | VARCHAR | |
-| `license_plate` | VARCHAR | Unique |
-| `vehicle_model` | VARCHAR | |
-| `status` | VARCHAR | `available` \| `on_ride` \| `offline` \| `inactive` |
-| `rating` | DECIMAL(3,2) | 1.00–5.00, default 5.00 |
+```sql
+CREATE TABLE riders (
+  rider_id               SERIAL PRIMARY KEY,
+  first_name             VARCHAR NOT NULL,
+  last_name              VARCHAR NOT NULL,
+  email                  VARCHAR NOT NULL UNIQUE,
+  phone_number           VARCHAR NOT NULL,
+  default_payment_method VARCHAR NOT NULL DEFAULT 'credit_card'
+                         CHECK (default_payment_method IN
+                           ('credit_card','debit_card','paypal','apple_pay','google_pay')),
+  rating                 DECIMAL(3,2) DEFAULT 5.00
+                         CHECK (rating BETWEEN 1.00 AND 5.00),
+  clerk_user_id          VARCHAR UNIQUE,
+  active                 BOOLEAN NOT NULL DEFAULT true,
+  created_at             TIMESTAMPTZ,
+  updated_at             TIMESTAMPTZ
+);
+```
 
-### `rides` — 62 records
-| Column | Type | Notes |
-|---|---|---|
-| `ride_id` | SERIAL PK | |
-| `rider_id` | INTEGER FK | → `riders.rider_id` |
-| `driver_id` | INTEGER FK | → `drivers.driver_id` |
-| `pickup_location` | VARCHAR | Free-text address string |
-| `dropoff_location` | VARCHAR | Free-text address string |
-| `status` | VARCHAR | `requested` \| `accepted` \| `en_route` \| `in_progress` \| `completed` \| `cancelled` |
-| `fare` | DECIMAL(8,2) | Calculated client-side via OSRM, stored on booking |
+### `drivers`
 
-### `payments` — 48 records
-| Column | Type | Notes |
-|---|---|---|
-| `payment_id` | SERIAL PK | |
-| `ride_id` | INTEGER FK | → `rides.ride_id` |
-| `rider_id` | INTEGER FK | → `riders.rider_id` |
-| `amount` | DECIMAL(8,2) | ≥ 0 validated |
-| `payment_method` | VARCHAR | Same enum as `riders.default_payment_method` |
-| `status` | VARCHAR | `pending` \| `completed` \| `refunded` |
+```sql
+CREATE TABLE drivers (
+  driver_id     SERIAL PRIMARY KEY,
+  first_name    VARCHAR NOT NULL,
+  last_name     VARCHAR NOT NULL,
+  email         VARCHAR NOT NULL UNIQUE,
+  phone_number  VARCHAR NOT NULL,
+  license_plate VARCHAR NOT NULL UNIQUE,
+  vehicle_model VARCHAR NOT NULL,
+  status        VARCHAR NOT NULL DEFAULT 'available'
+                CHECK (status IN ('available','on_ride','offline','inactive')),
+  rating        DECIMAL(3,2) DEFAULT 5.00
+                CHECK (rating BETWEEN 1.00 AND 5.00),
+  created_at    TIMESTAMPTZ,
+  updated_at    TIMESTAMPTZ
+);
+```
+
+### `rides`
+
+```sql
+CREATE TABLE rides (
+  ride_id          SERIAL PRIMARY KEY,
+  rider_id         INTEGER REFERENCES riders(rider_id),
+  driver_id        INTEGER REFERENCES drivers(driver_id),
+  pickup_location  VARCHAR NOT NULL,
+  dropoff_location VARCHAR NOT NULL,
+  status           VARCHAR NOT NULL DEFAULT 'requested'
+                   CHECK (status IN
+                     ('requested','accepted','en_route','in_progress','completed','cancelled')),
+  fare             DECIMAL(8,2),
+  created_at       TIMESTAMPTZ,
+  updated_at       TIMESTAMPTZ
+);
+```
+
+### `payments`
+
+```sql
+CREATE TABLE payments (
+  payment_id     SERIAL PRIMARY KEY,
+  ride_id        INTEGER NOT NULL REFERENCES rides(ride_id),
+  rider_id       INTEGER REFERENCES riders(rider_id),
+  amount         DECIMAL(8,2) NOT NULL CHECK (amount >= 0),
+  payment_method VARCHAR NOT NULL DEFAULT 'credit_card'
+                 CHECK (payment_method IN
+                   ('credit_card','debit_card','paypal','apple_pay','google_pay')),
+  status         VARCHAR NOT NULL DEFAULT 'completed'
+                 CHECK (status IN ('pending','completed','refunded')),
+  created_at     TIMESTAMPTZ,
+  updated_at     TIMESTAMPTZ
+);
+```
 
 ---
 
-## REST API Reference
+## API Reference
 
 Base URL: `https://rideflow-server.onrender.com`
 
-All protected routes require a Clerk-issued JWT as `Authorization: Bearer <token>`.
+All protected endpoints require `Authorization: Bearer <clerk-jwt>`.
 
-### Auth
-| Method | Endpoint | Auth | Description |
-|---|---|---|---|
-| GET | `/api/auth/me` | Any signed-in | Returns current user's profile and role from Clerk |
+### `GET /`
 
-### Riders
-| Method | Endpoint | Auth | Description |
-|---|---|---|---|
-| GET | `/api/riders` | Admin / Manager | List all riders; supports `?search=` |
-| GET | `/api/riders/:id` | Admin / Manager | Get single rider by ID |
-| POST | `/api/riders` | Admin / Manager | Create a new rider record |
-| PUT | `/api/riders/:id` | Admin / Manager | Full update |
-| DELETE | `/api/riders/:id` | Admin / Manager | Hard delete |
+Health check. Returns `{ message, version }`. No auth required.
 
-### Drivers
-| Method | Endpoint | Auth | Description |
-|---|---|---|---|
-| GET | `/api/drivers` | Any signed-in | List all drivers; supports `?search=` |
-| GET | `/api/drivers/stats` | Any signed-in | Aggregate counts by status |
-| GET | `/api/drivers/:id` | Any signed-in | Get single driver |
-| POST | `/api/drivers` | Admin / Manager | Create driver |
-| PUT | `/api/drivers/:id` | Driver / Admin | Update driver |
-| DELETE | `/api/drivers/:id` | Admin / Manager | Delete driver |
+---
 
-### Rides
-| Method | Endpoint | Auth | Description |
+### Auth — `/api/auth`
+
+| Method | Path | Auth | Description |
 |---|---|---|---|
-| GET | `/api/rides` | Any signed-in | Riders see own rides; admins see all; supports `?search=`, `?status=`, `?statuses=` |
-| GET | `/api/rides/:id` | Any signed-in | Row-level ownership check |
-| POST | `/api/rides` | Rider only | Book a ride (auto-links `rider_id` from Clerk JWT) |
+| GET | `/api/auth/me` | Signed in | Current user's Clerk profile and role |
+
+---
+
+### Riders — `/api/riders`
+
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| GET | `/api/riders` | Admin | List all riders. Supports `?search=` (name or email, case-insensitive) |
+| GET | `/api/riders/:id` | Admin | Single rider by primary key |
+| POST | `/api/riders` | Admin | Create rider. Required: `first_name`, `last_name`, `email`, `phone_number` |
+| PUT | `/api/riders/:id` | Admin | Full update |
+| DELETE | `/api/riders/:id` | Admin | Hard delete |
+
+---
+
+### Drivers — `/api/drivers`
+
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| GET | `/api/drivers` | Signed in | List all drivers. Supports `?search=` |
+| GET | `/api/drivers/stats` | Signed in | Count by status (`available`, `on_ride`, `offline`, `inactive`) |
+| GET | `/api/drivers/:id` | Signed in | Single driver |
+| POST | `/api/drivers` | Admin | Create driver. Required: `first_name`, `last_name`, `email`, `phone_number`, `license_plate`, `vehicle_model` |
+| PUT | `/api/drivers/:id` | Driver / Admin | Update fields |
+| DELETE | `/api/drivers/:id` | Admin | Delete |
+
+---
+
+### Rides — `/api/rides`
+
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| GET | `/api/rides` | Signed in | Riders receive only their own rows (filtered by `clerk_user_id → rider_id`); admins receive all rows. Supports `?search=`, `?status=`, `?statuses=a,b` |
+| GET | `/api/rides/:id` | Signed in | Single ride; row-level ownership enforced for non-admins |
+| POST | `/api/rides` | Rider | Create ride. Required: `pickup_location`, `dropoff_location`. Optional: `fare`, `driver_id`. `rider_id` is resolved server-side from the JWT |
 | PUT | `/api/rides/:id` | Driver / Admin | Full update |
-| PATCH | `/api/rides/:id/status` | Driver / Admin | Status-only update |
-| DELETE | `/api/rides/:id` | Admin only | Soft-delete: sets `status = 'cancelled'` |
+| PATCH | `/api/rides/:id/status` | Driver / Admin | Status-only update. Validates against enum: `requested`, `accepted`, `en_route`, `in_progress`, `completed`, `cancelled` |
+| DELETE | `/api/rides/:id` | Admin | Soft delete — sets `status = 'cancelled'` |
 
-### Payments
-| Method | Endpoint | Auth | Description |
+---
+
+### Payments — `/api/payments`
+
+| Method | Path | Auth | Description |
 |---|---|---|---|
-| GET | `/api/payments` | Any signed-in | Own payments (riders) or all (admin) |
-| GET | `/api/payments/:id` | Any signed-in | Get single payment |
-| POST | `/api/payments` | Rider only | Record a payment |
-| PUT | `/api/payments/:id` | Admin only | Update payment record |
-| DELETE | `/api/payments/:id` | Admin only | Delete payment |
-
-### AI
-| Method | Endpoint | Auth | Description |
-|---|---|---|---|
-| POST | `/api/ai/destination-suggestions` | Rider only | Returns 4–5 plain-text activity/food/sightseeing suggestions for a given destination via Azure OpenAI GPT-4o |
+| GET | `/api/payments` | Signed in | Own payments (rider) or all (admin) |
+| GET | `/api/payments/:id` | Signed in | Single payment with ownership check |
+| POST | `/api/payments` | Rider | Create payment record. Required: `ride_id`, `amount`, `payment_method` |
+| PUT | `/api/payments/:id` | Admin | Update |
+| DELETE | `/api/payments/:id` | Admin | Delete |
 
 ---
 
-## AI Integration — Azure OpenAI
+### AI — `/api/ai`
 
-RideFlow's destination assistant is powered by **Azure OpenAI** via Azure AI Foundry. The deployment uses `gpt-4o` (version `2024-11-20`) hosted in the `eastus2` region.
+| Method | Path | Auth | Body | Description |
+|---|---|---|---|---|
+| POST | `/api/ai/destination-suggestions` | Rider | `{ destination: string }` | Returns 4–5 plain-text activity suggestions for the given location via Azure OpenAI GPT-4o |
 
-**Request flow:**
-```
-Rider (browser) → POST /api/ai/destination-suggestions
-                         │
-                   requireRider middleware
-                   (Clerk JWT verified)
-                         │
-                   aiController.js
-                         │
-                   POST {AZURE_OPENAI_ENDPOINT}
-                        /openai/deployments/gpt-4o
-                        /chat/completions
-                        ?api-version=2024-10-21
-                         │
-                   Azure GPT-4o response
-                         │
-                   JSON { success: true, suggestions: "..." }
-                         │
-                   Rider portal (right panel)
-```
-
-**System prompt design:** The model is instructed to act as a friendly local guide, respond in a plain numbered list (no markdown, no asterisks, no bold), and keep each suggestion to one sentence. Token budget is capped at 400 to keep responses fast.
-
-**Security:** The Azure API key lives exclusively in the server's environment variables — it is never sent to the client. The route is gated behind `requireRider`, which calls `clerkClient.users.getUser(userId)` to verify the `rider` role before forwarding the request to Azure.
-
----
-
-## Map & Geolocation Stack
-
-| Feature | Provider | Notes |
-|---|---|---|
-| Map tile rendering | [OpenStreetMap](https://openstreetmap.org) via Leaflet | Free, no API key |
-| Address autocomplete | [Photon by Komoot](https://photon.komoot.io) | Komoot's geocoder; biased to Austin TX |
-| Geocoding | [Nominatim](https://nominatim.openstreetmap.org) | Converts address strings to lat/lon |
-| Driving route + distance | [OSRM](http://project-osrm.org) public API | Returns real driving distance in meters and duration in seconds |
-
-**Key implementation detail:** Autocomplete dropdowns use `position: fixed` + `getBoundingClientRect()` to escape Leaflet's internal CSS stacking context. Leaflet creates its own z-index layers (200–600) which would clip standard `position: absolute` dropdowns. By anchoring to the viewport with fixed positioning, dropdowns always render above the map.
-
----
-
-## Fare Calculation
-
-```
-Fare = max(base + distance + service, minimum)
-
-  Base fare:     $2.50  (always applied)
-  Distance:      $1.75 × driving miles   (from OSRM real routing)
-  Service fee:   $1.20  (when any address is entered)
-  Minimum fare:  $5.00
-```
-
-Fare is calculated entirely client-side using live OSRM data and stored in the `rides.fare` column when the ride is booked.
-
----
-
-## Role-Based Access Control
-
-Roles are stored in **Clerk `publicMetadata`** as `{ "role": "rider" | "driver" | "admin" | "manager" }`. Every protected API endpoint calls `clerkClient.users.getUser(userId)` to read the role from the Clerk API — roles are never self-reported by the client.
-
-| Feature | Rider | Driver | Admin / Manager |
-|---|---|---|---|
-| Book a ride | ✅ | — | — |
-| View own rides & history | ✅ | — | — |
-| View all rides | — | — | ✅ |
-| Update ride status | — | ✅ | ✅ |
-| AI destination suggestions | ✅ | — | — |
-| View own payments | ✅ | — | — |
-| View all payments | — | — | ✅ |
-| Full CRUD on riders | — | — | ✅ |
-| Full CRUD on drivers | — | — | ✅ |
-| Admin portal access | — | — | ✅ |
-
-Frontend `ProtectedRoute` redirects users to `/onboarding` if they have no role, and to the correct portal based on their role.
-
----
-
-## Neon PostgreSQL
-
-RideFlow's database is hosted on **[Neon](https://neon.tech)** — a modern serverless PostgreSQL platform.
-
-**Why Neon:**
-- **Serverless autoscaling** — compute scales to zero when idle; no idle billing on the free tier
-- **Database branching** — create isolated database branches for feature development (like Git branches for your schema and data)
-- **Instant provisioning** — a new database is ready in seconds
-- **SSL-enforced connections** — all connections use `sslmode=require` with `channel_binding=require` for maximum transport security
-- **Connection pooling** — handles concurrent connections efficiently without a separate connection pooler
-
-**Connection config in Sequelize:**
-```javascript
-dialectOptions: {
-  ssl: { require: true, rejectUnauthorized: false }
+**Response**
+```json
+{
+  "success": true,
+  "suggestions": "1. Visit the Texas State Capitol...\n2. ..."
 }
 ```
 
-The production endpoint lives in the `us-east-1` AWS region:
+---
+
+## Authentication & Authorization
+
+Roles are stored in **Clerk `publicMetadata`** and are write-protected — only server-side Clerk SDK calls (with the secret key) can modify them. The client cannot self-assign a role.
+
 ```
-ep-red-brook-amyhdn19.c-5.us-east-1.aws.neon.tech
+publicMetadata: { "role": "rider" | "driver" | "admin" | "manager" }
 ```
 
-Sequelize runs `sync({ alter: true })` on every server startup — this non-destructively updates column definitions to match model changes without dropping tables or data.
+**Middleware chain (server)**
+
+```
+Request
+  └─► clerkMiddleware()          — decodes JWT, attaches userId to req
+        └─► requireAuth()        — rejects if no userId
+              └─► requireRider() — calls clerkClient.users.getUser(userId)
+                                   rejects if role !== 'rider' | 'admin' | 'manager'
+```
+
+Each middleware variant (`requireRider`, `requireDriver`, `requireAdmin`) independently fetches the user from Clerk on every request — the role is never trusted from the token payload alone.
+
+**Client-side token lifecycle**
+
+```
+App mounts
+  └─► AuthSync useEffect
+        ├─► getToken() → setAuthToken(token)   (immediate)
+        └─► setInterval(55_000)                (refresh loop)
+              └─► getToken() → setAuthToken(token)
+
+handleBookRide / handleGetSuggestions
+  └─► getToken() → setAuthToken(token)         (pre-call refresh)
+        └─► ridesApi.create(...) / aiApi.getDestinationSuggestions(...)
+```
+
+**Access matrix**
+
+| Endpoint group | Rider | Driver | Admin / Manager |
+|---|---|---|---|
+| `POST /api/rides` | ✓ | — | — |
+| `GET /api/rides` (own) | ✓ | — | — |
+| `GET /api/rides` (all) | — | — | ✓ |
+| `PATCH /api/rides/:id/status` | — | ✓ | ✓ |
+| `POST /api/ai/destination-suggestions` | ✓ | — | — |
+| `GET /api/payments` (own) | ✓ | — | — |
+| `GET/POST/PUT/DELETE /api/riders` | — | — | ✓ |
+| `GET/POST/PUT/DELETE /api/drivers` | — | — | ✓ |
+
+---
+
+## AI Integration
+
+RideFlow calls the **Azure OpenAI** service via Azure AI Foundry. Deployment details:
+
+| Parameter | Value |
+|---|---|
+| Deployment name | `gpt-4o` |
+| Model version | `2024-11-20` |
+| Region | `eastus2` |
+| API version | `2024-10-21` |
+| Max tokens | 400 |
+| Temperature | 0.7 |
+
+**Endpoint pattern**
+```
+POST {AZURE_OPENAI_ENDPOINT}/openai/deployments/gpt-4o/chat/completions?api-version=2024-10-21
+Headers:
+  Content-Type: application/json
+  api-key: {AZURE_AI_KEY}
+```
+
+**System prompt**
+```
+You are a friendly local guide. Give concise, useful suggestions.
+Use plain text only — no asterisks, no bold, no markdown.
+```
+
+**User prompt template**
+```
+I'm taking a rideshare to "{destination}". Suggest 4-5 fun things to do,
+see, or eat near this destination. Keep each item to one short sentence.
+Format as a plain numbered list with no special formatting.
+```
+
+The Azure API key is stored exclusively in the server environment. It is never forwarded to the client or logged.
+
+---
+
+## Maps & Geocoding
+
+| Capability | Provider | Notes |
+|---|---|---|
+| Tile rendering | OpenStreetMap via Leaflet | No API key required |
+| Address autocomplete | [Photon by Komoot](https://photon.komoot.io) | `?q=&limit=5&lang=en&lat=30.2672&lon=-97.7431` |
+| Forward geocoding | [Nominatim](https://nominatim.openstreetmap.org) | `?format=json&q=...&limit=1` |
+| Driving route | [OSRM public API](http://project-osrm.org) | `/route/v1/driving/{lon1},{lat1};{lon2},{lat2}?overview=false` |
+
+**Autocomplete z-index solution**
+
+Leaflet mounts its tile and marker panes at z-indices 200–600 inside a positioned container, creating a stacking context that clips any child `position: absolute` dropdown. The autocomplete dropdown uses `position: fixed` anchored via `getBoundingClientRect()` on the input element:
+
+```javascript
+onChange={(e) => {
+  setPickup(e.target.value);
+  if (inputRef.current) setRect(inputRef.current.getBoundingClientRect());
+}}
+
+// Dropdown
+<div style={{ position: 'fixed', top: rect.bottom + 2, left: rect.left, width: rect.width }}>
+```
+
+This renders the dropdown at viewport level, unaffected by any ancestor stacking context.
+
+**Selection suppression**
+
+A `useRef` flag (`pickupSelected`) prevents the geocoding `useEffect` from firing a redundant search cycle immediately after a suggestion is selected:
+
+```javascript
+useEffect(() => {
+  if (pickupSelected.current) { pickupSelected.current = false; return; }
+  // debounced geocode + autocomplete search
+}, [pickup]);
+```
+
+---
+
+## Fare Model
+
+```
+fare = max(baseFare + distanceFare + serviceFee, minimumFare)
+
+  baseFare     = $2.50   (fixed, always applied)
+  distanceFare = $1.75 × miles  (miles = OSRM distance_meters / 1609.34)
+  serviceFee   = $1.20   (applied when any address field is non-empty)
+  minimumFare  = $5.00
+```
+
+Fare is computed client-side from live OSRM data and transmitted in the `POST /api/rides` body, where it is stored as `DECIMAL(8,2)` in the `rides` table.
 
 ---
 
 ## Project Structure
 
 ```
-MIS372T_Rideshare_App/
-├── client/                           # React + Vite frontend
-│   ├── index.html                    # No external scripts — iframe-only for Strata
-│   ├── vite.config.js                # Dev proxy: /api → localhost:3001
-│   ├── .env                          # VITE_API_URL, VITE_CLERK_PUBLISHABLE_KEY
+.
+├── client/
+│   ├── index.html
+│   ├── vite.config.js              # dev proxy: /api → http://localhost:3001
+│   ├── .env                        # VITE_API_URL, VITE_CLERK_PUBLISHABLE_KEY
 │   └── src/
-│       ├── main.jsx                  # ClerkProvider, BrowserRouter root
-│       ├── App.jsx                   # Routes, AuthSync (55s token refresh), theme toggle
-│       ├── index.css                 # Full design system — light + dark themes
+│       ├── main.jsx                # ClerkProvider wraps BrowserRouter
+│       ├── App.jsx                 # Route tree, AuthSync, theme state
+│       ├── index.css               # CSS custom properties — light + dark themes
 │       ├── pages/
-│       │   ├── HomePage.jsx          # Landing page
-│       │   ├── SignInPage.jsx        # Clerk-hosted sign-in
-│       │   ├── SignUpPage.jsx        # Clerk-hosted sign-up
-│       │   ├── OnboardingPage.jsx    # Role selection after first sign-in
-│       │   ├── RiderPortalPage.jsx   # Book, Active Ride, History, Transactions, Profile
-│       │   ├── DriverPortalPage.jsx  # Driver dashboard
-│       │   ├── AdminPage.jsx         # Admin dashboard
-│       │   └── RidersPage.jsx        # Riders CRUD table (admin only)
+│       │   ├── HomePage.jsx
+│       │   ├── SignInPage.jsx
+│       │   ├── SignUpPage.jsx
+│       │   ├── OnboardingPage.jsx  # Role selection; writes to Clerk publicMetadata
+│       │   ├── RiderPortalPage.jsx # Book, Active, History, Transactions, Profile tabs
+│       │   ├── DriverPortalPage.jsx
+│       │   ├── AdminPage.jsx
+│       │   └── RidersPage.jsx
 │       ├── components/
-│       │   ├── Navbar.jsx            # Public site navbar
-│       │   ├── PortalNavbar.jsx      # Tabbed portal navbar with theme toggle
-│       │   ├── ProtectedRoute.jsx    # Role-based route guard using Clerk
-│       │   ├── RideMap.jsx           # Lazy-loaded Leaflet map with route polyline
-│       │   ├── RiderForm.jsx         # Add/edit rider modal
-│       │   ├── RidersTable.jsx       # Searchable riders table
-│       │   ├── DriverForm.jsx        # Add/edit driver modal
-│       │   ├── DriversTable.jsx      # Searchable drivers table
-│       │   ├── DeleteModal.jsx       # Reusable confirmation dialog
-│       │   └── Toast.jsx             # Auto-dismissing notification stack
+│       │   ├── Navbar.jsx
+│       │   ├── PortalNavbar.jsx
+│       │   ├── ProtectedRoute.jsx  # Reads Clerk role; redirects on mismatch
+│       │   ├── RideMap.jsx         # Lazy-loaded; renders route polyline via OSRM coords
+│       │   ├── RiderForm.jsx
+│       │   ├── RidersTable.jsx
+│       │   ├── DriverForm.jsx
+│       │   ├── DriversTable.jsx
+│       │   ├── DeleteModal.jsx
+│       │   └── Toast.jsx
 │       └── services/
-│           └── api.js                # Axios instance + ridersApi / driversApi /
-│                                     #   ridesApi / paymentsApi / aiApi
+│           └── api.js              # Axios instance; ridersApi driversApi ridesApi
+│                                   # paymentsApi aiApi; setAuthToken export
 │
-└── server/                           # Express + Sequelize backend
-    ├── index.js                      # App entry: middleware, route registration, DB sync
-    ├── .env                          # DATABASE_URL, CLERK keys, AZURE keys (not committed)
-    ├── .env.example                  # Template with placeholder values
+└── server/
+    ├── index.js                    # Express setup, middleware registration, DB sync
+    ├── .env.example
     ├── config/
-    │   └── database.js               # Sequelize + Neon SSL config
+    │   └── database.js             # Sequelize + pg SSL config for Neon
     ├── models/
-    │   ├── index.js                  # Model associations (Rider→Ride, Driver→Ride, etc.)
+    │   ├── index.js                # hasMany / belongsTo associations
     │   ├── Rider.js
     │   ├── Driver.js
     │   ├── Ride.js
@@ -433,157 +565,117 @@ MIS372T_Rideshare_App/
     │   ├── payments.js
     │   └── ai.js
     ├── controllers/
-    │   ├── ridersController.js       # Full CRUD + search + row-level auth
-    │   ├── driversController.js      # Full CRUD + stats endpoint
-    │   ├── ridesController.js        # CRUD + auto rider_id linking + soft delete
-    │   ├── paymentsController.js     # CRUD + ownership checks
-    │   └── aiController.js           # Azure OpenAI GPT-4o integration
+    │   ├── ridersController.js
+    │   ├── driversController.js
+    │   ├── ridesController.js      # Resolves rider_id from JWT on POST
+    │   ├── paymentsController.js
+    │   └── aiController.js         # Azure OpenAI fetch; never exposes key to client
     └── middleware/
-        └── requireAuth.js            # requireAuth / requireRider /
-                                      #   requireDriver / requireAdmin
+        └── requireAuth.js          # requireAuth requireRider requireDriver requireAdmin
 ```
 
 ---
 
-## Getting Started Locally
+## Local Development
 
-### Prerequisites
-
-- Node.js ≥ 18
-- A [Clerk](https://clerk.com) account (free tier)
-- A [Neon](https://neon.tech) PostgreSQL database (free tier)
-- An [Azure](https://portal.azure.com) account with an OpenAI resource and `gpt-4o` deployment
-
-### 1. Clone
+**Prerequisites:** Node.js ≥ 18, a Neon (or any PostgreSQL) database, Clerk application, Azure OpenAI deployment.
 
 ```bash
 git clone https://github.com/suhanitiwari0306/MIS372T_Rideshare_App.git
 cd MIS372T_Rideshare_App
+
+# Install dependencies
+cd server && npm install && cd ../client && npm install
+
+# Configure environment (see next section)
+cp server/.env.example server/.env
+# edit server/.env with your credentials
+
+# Start backend
+cd server && npm run dev        # http://localhost:3001
+
+# Start frontend (separate terminal)
+cd client && npm run dev        # http://localhost:5173
 ```
 
-### 2. Install dependencies
+The Vite dev server proxies all `/api/*` requests to `localhost:3001`. No CORS configuration is needed locally.
 
-```bash
-cd server && npm install
-cd ../client && npm install
-```
-
-### 3. Configure environment variables
-
-**`server/.env`**
-```env
-DATABASE_URL=postgresql://<user>:<password>@<host>/<db>?sslmode=require&channel_binding=require
-DB_SSL=true
-PORT=3001
-CLIENT_ORIGIN=http://localhost:5173
-CLERK_SECRET_KEY=sk_test_...
-AZURE_AI_KEY=your_azure_openai_api_key
-AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com
-AZURE_OPENAI_DEPLOYMENT=gpt-4o
-```
-
-**`client/.env`**
-```env
-VITE_API_URL=http://localhost:3001/api
-VITE_CLERK_PUBLISHABLE_KEY=pk_test_...
-```
-
-### 4. Run
-
-```bash
-# Terminal 1 — backend
-cd server && npm run dev
-
-# Terminal 2 — frontend
-cd client && npm run dev
-```
-
-- Frontend: `http://localhost:5173`
-- Backend: `http://localhost:3001`
-
-Vite automatically proxies all `/api/*` requests to `localhost:3001` in development (configured in `vite.config.js`), so no CORS setup is needed locally.
+Sequelize will create and sync all tables on first startup via `sync({ alter: true })`.
 
 ---
 
-## Deployment (Render)
+## Environment Variables
 
-Both services are deployed on **[Render](https://render.com)**.
+### `server/.env`
 
-| Service | Type | URL |
+| Variable | Required | Description |
 |---|---|---|
-| `rideflow-server` | Web Service (Node.js) | `https://rideflow-server.onrender.com` |
-| `rideflow-frontend` | Static Site | `https://rideflow-frontend.onrender.com` |
+| `DATABASE_URL` | Yes | Full Neon connection string including `?sslmode=require&channel_binding=require` |
+| `DB_SSL` | Yes | Set to `true` for Neon / any SSL-required host |
+| `PORT` | No | Server port. Defaults to `3001` |
+| `CLIENT_ORIGIN` | Yes | Comma-separated list of allowed CORS origins (e.g. `http://localhost:5173,https://rideflow-frontend.onrender.com`) |
+| `CLERK_SECRET_KEY` | Yes | Clerk backend secret key (`sk_live_…` or `sk_test_…`) |
+| `AZURE_AI_KEY` | Yes | Azure OpenAI API key |
+| `AZURE_OPENAI_ENDPOINT` | Yes | e.g. `https://your-resource.openai.azure.com` |
+| `AZURE_OPENAI_DEPLOYMENT` | No | Deployment name. Defaults to `gpt-4o` |
 
-**Backend environment variables** (set in Render dashboard):
-```
-DATABASE_URL            — Neon connection string (with SSL params)
-CLIENT_ORIGIN           — https://rideflow-frontend.onrender.com
-CLERK_SECRET_KEY        — Clerk backend secret key
-AZURE_AI_KEY            — Azure OpenAI API key
-AZURE_OPENAI_ENDPOINT   — https://your-resource.openai.azure.com
-AZURE_OPENAI_DEPLOYMENT — gpt-4o
-```
+### `client/.env`
 
-**Frontend environment variables** (set in Render dashboard):
-```
-VITE_API_URL                — https://rideflow-server.onrender.com/api
-VITE_CLERK_PUBLISHABLE_KEY  — pk_live_...
-```
+| Variable | Required | Description |
+|---|---|---|
+| `VITE_API_URL` | Yes | Full API base URL, e.g. `https://rideflow-server.onrender.com/api`. Falls back to `/api` (Vite proxy) if unset |
+| `VITE_CLERK_PUBLISHABLE_KEY` | Yes | Clerk publishable key (`pk_live_…` or `pk_test_…`) |
 
-> **Note on Render free tier:** Web services spin down after 15 minutes of inactivity. The first request after a cold start may take 30–60 seconds. Subsequent requests within the active window are fast. The CORS configuration supports multiple comma-separated origins in `CLIENT_ORIGIN` for flexible deployment.
+---
+
+## Deployment
+
+Both services run on [Render](https://render.com) free tier.
+
+**Backend — Web Service**
+
+| Setting | Value |
+|---|---|
+| Runtime | Node |
+| Build command | `cd server && npm install` |
+| Start command | `cd server && node index.js` |
+| Root directory | *(repo root)* |
+
+Set all variables from `server/.env` in the Render environment variable panel. Do **not** commit `.env` to the repository.
+
+**Frontend — Static Site**
+
+| Setting | Value |
+|---|---|
+| Build command | `cd client && npm install && npm run build` |
+| Publish directory | `client/dist` |
+| Root directory | *(repo root)* |
+
+Set `VITE_API_URL` and `VITE_CLERK_PUBLISHABLE_KEY` in the Render environment variable panel. Vite inlines `VITE_*` variables at build time — changes require a redeploy.
+
+**Cold-start behaviour:** Render free-tier web services shut down after 15 minutes of inactivity. The first inbound request after a sleep period can take 30–60 seconds while the container boots. The application handles this gracefully — network errors surface a visible banner prompting the user to retry in 30 seconds.
 
 ---
 
 ## Design System
 
-RideFlow ships a full dual-theme CSS design system in `client/src/index.css`:
+`client/src/index.css` implements a two-theme design system via CSS custom properties on `:root` (dark, default) and `[data-theme="light"]`.
 
-**Dark theme** (default)
-- Background: `#0c000f` (near-black deep purple)
-- Surface: `#1c0035` (dark purple)
-- Accent: `#ae02a0` (magenta)
-- Text: `#eaa0ff` / `#c06ed4`
+| Token | Dark | Light |
+|---|---|---|
+| `--bg-primary` | `#0c000f` | `#fdf5ff` |
+| `--bg-card` | `#1c0035` | `#ffffff` |
+| `--magenta` | `#ae02a0` | `#ae02a0` |
+| `--text-primary` | `#eaa0ff` | `#0c000f` |
+| `--text-muted` | `#7a3d8a` | `#7a3d8a` |
+| `--danger` | `#ff3d6e` | `#dc2626` |
 
-**Light theme**
-- Background: `#fdf5ff` (near-white lavender)
-- Surface: `#ffffff`
-- Same magenta accent `#ae02a0`
-- Text: `#0c000f` / `#4a0f62`
-
-Theme preference is persisted to `localStorage` and applied via `data-theme` attribute on `<html>`. The toggle is visible in all portal navbars and the public Navbar component.
+Theme preference is written to `localStorage` under the key `rideflow-theme` and re-applied via `document.documentElement.setAttribute('data-theme', theme)` on mount and on toggle.
 
 ---
 
-## Assignment Requirements
+## Course Context
 
-Built to satisfy **MIS 372T Spring 2026** project requirements:
-
-| Requirement | Implementation |
-|---|---|
-| React frontend with component architecture | ✅ React 18 + Vite, `components/` and `pages/` separation |
-| External CSS design system | ✅ Full `index.css` with CSS custom properties (no inline styles in components) |
-| Node.js + Express REST API | ✅ 6 route files, 5 controllers, full CRUD |
-| Sequelize ORM + PostgreSQL | ✅ 4 models with validations, associations, `sync({ alter: true })` |
-| Neon hosted database | ✅ Production DB on Neon (`us-east-1`), 62+ rides, 12 riders, 11 drivers |
-| Clerk authentication with roles | ✅ `rider`, `driver`, `admin/manager` enforced on both frontend and backend |
-| LLM integration via Azure AI Foundry | ✅ GPT-4o (`gpt-4o`, deployment `2024-11-20`) for destination suggestions |
-| Strata platform chat widget | ✅ Embedded via iframe (`workspace=mis372t`), collapsible UI |
-| Interactive maps | ✅ Leaflet + OpenStreetMap + OSRM routing + Photon autocomplete |
-| Cloud deployment | ✅ Both services live on Render |
-| Role-based route protection | ✅ `ProtectedRoute` (frontend) + `requireAuth/Rider/Driver/Admin` (backend) |
-
----
-
-## Author
-
-**Suhani Tiwari**  
-MIS 372T · McCombs School of Business · The University of Texas at Austin  
-[github.com/suhanitiwari0306](https://github.com/suhanitiwari0306)
-
----
-
-<div align="center">
-
-Built with React · Express · Neon PostgreSQL · Clerk · Azure OpenAI · Leaflet · Render
-
-</div>
+**University:** The University of Texas at Austin, McCombs School of Business  
+**Course:** MIS 372T — Full-Stack Web Application Development, Spring 2026  
+**Author:** Suhani Tiwari · [github.com/suhanitiwari0306](https://github.com/suhanitiwari0306)
