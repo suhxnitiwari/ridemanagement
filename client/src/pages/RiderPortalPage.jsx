@@ -195,7 +195,12 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
       setPickupCoords(null);
       setDropoffCoords(null);
     } catch (err) {
-      setBookError(err.response?.data?.message || 'Failed to book ride. Please try again.');
+      console.error('Book ride failed:', err?.response?.status, err?.response?.data, err?.message);
+      if (!err.response) {
+        setBookError('Could not reach the server. It may be waking up — wait 30 seconds and try again.');
+      } else {
+        setBookError(err.response.data?.message || `Error ${err.response.status}: Failed to book ride.`);
+      }
     } finally {
       setBooking(false);
     }
@@ -352,7 +357,11 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
                     </div>
                   </div>
 
-                  {bookError && <p style={{ color: 'var(--danger)', marginTop: '0.5rem', fontSize: '0.85rem' }}>{bookError}</p>}
+                  {bookError && (
+                    <div style={{ background: '#fee2e2', border: '1px solid #ef4444', borderRadius: '8px', padding: '0.75rem 1rem', color: '#b91c1c', fontSize: '0.9rem', marginTop: '0.5rem', fontWeight: 500 }}>
+                      {bookError}
+                    </div>
+                  )}
 
                   <button
                     className="btn-portal-cta"
