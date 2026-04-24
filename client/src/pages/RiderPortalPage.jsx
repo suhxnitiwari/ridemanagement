@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, lazy, Suspense } from 'react';
-import { useUser } from '@clerk/react';
+import { useUser, useAuth } from '@clerk/react';
 import PortalNavbar from '../components/PortalNavbar';
-import { ridesApi, paymentsApi, aiApi } from '../services/api';
+import { ridesApi, paymentsApi, aiApi, setAuthToken } from '../services/api';
 
 const RideMap = lazy(() => import('../components/RideMap'));
 
@@ -105,6 +105,7 @@ const ActiveRideCard = () => (
 
 /* ── Rider Portal Page ─────────────────────────────────────────────────────── */
 const RiderPortalPage = ({ theme, onThemeToggle }) => {
+  const { getToken } = useAuth();
   const [activeTab, setActiveTab] = useState('book');
   const [pickup,    setPickup]    = useState('');
   const [dropoff,   setDropoff]   = useState('');
@@ -136,6 +137,8 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
 
   const [aiSuggestions, setAiSuggestions] = useState('');
   const [aiLoading,     setAiLoading]     = useState(false);
+  const [aiError,       setAiError]       = useState('');
+  const [strataOpen,    setStrataOpen]    = useState(false);
 
   const baseFare   = 2.50;
   const PER_MILE   = 1.75;
@@ -173,12 +176,16 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
     const dest = dropoff.trim();
     if (!dest) return;
     setAiSuggestions('');
+    setAiError('');
     setAiLoading(true);
     try {
+      const token = await getToken();
+      if (token) setAuthToken(token);
       const res = await aiApi.getDestinationSuggestions(dest);
       setAiSuggestions(res.data?.suggestions || '');
-    } catch {
-      setAiSuggestions('');
+    } catch (err) {
+      console.error('AI suggestions failed:', err?.response?.status, err?.message);
+      setAiError(err?.response?.data?.message || 'Could not get suggestions. Try again.');
     } finally {
       setAiLoading(false);
     }
@@ -188,6 +195,8 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
     setBooking(true);
     setBookError('');
     try {
+      const token = await getToken();
+      if (token) setAuthToken(token);
       await ridesApi.create({ pickup_location: pickup, dropoff_location: dropoff, fare: total });
       setBookSuccess(true);
       setPickup('');
@@ -402,6 +411,10 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
               <div className="section-label">AI Destination Assistant</div>
               {aiLoading ? (
                 <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>Getting suggestions…</div>
+              ) : aiError ? (
+                <div style={{ background: '#fee2e2', border: '1px solid #ef4444', borderRadius: '8px', padding: '0.6rem 0.8rem', color: '#b91c1c', fontSize: '0.85rem' }}>
+                  {aiError}
+                </div>
               ) : aiSuggestions ? (
                 <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', whiteSpace: 'pre-line', lineHeight: 1.7 }}>
                   {aiSuggestions}
@@ -419,14 +432,26 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
               >
                 {aiLoading ? 'Getting suggestions…' : 'Suggest things to do'}
               </button>
-              <div className="strata-chat-widget">
-                <iframe
-                  src="https://strata.fyi/embed?workspace=mis372t"
-                  loading="lazy"
-                  allow="clipboard-write"
-                  style={{ width: '100%', height: '420px', border: 'none', borderRadius: '8px' }}
-                />
+
+              <div style={{ borderTop: '1px solid var(--border)', paddingTop: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Trip assistant chat</span>
+                <button
+                  onClick={() => setStrataOpen((o) => !o)}
+                  style={{ fontSize: '0.8rem', padding: '0.3rem 0.75rem', borderRadius: '6px', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer' }}
+                >
+                  {strataOpen ? 'Close chat' : 'Open chat'}
+                </button>
               </div>
+              {strataOpen && (
+                <div className="strata-chat-widget">
+                  <iframe
+                    src="https://strata.fyi/embed?workspace=mis372t"
+                    loading="lazy"
+                    allow="clipboard-write"
+                    style={{ width: '100%', height: '420px', border: 'none', borderRadius: '8px' }}
+                  />
+                </div>
+              )}
             </div>
           </div>
         </div>
