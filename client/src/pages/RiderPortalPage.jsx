@@ -22,6 +22,10 @@ const searchAddresses = async (query) => {
   } catch { return []; }
 };
 
+// Characters that never appear in real street addresses
+const ADDR_INVALID_RE = /[!$%^&*=[\]{};:"<>?`~|\\]/;
+const isValidAddressInput = (s) => !ADDR_INVALID_RE.test(s);
+
 const geocode = async (address) => {
   if (!address.trim()) return null;
   const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1`;
@@ -157,9 +161,13 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
   const [pickupRect,  setPickupRect]  = useState(null);
   const [dropoffRect, setDropoffRect] = useState(null);
   const [routeInfo,    setRouteInfo]    = useState(null);
-  const [booking,      setBooking]      = useState(false);
-  const [bookError,    setBookError]    = useState('');
-  const [bookSuccess,  setBookSuccess]  = useState(false);
+  const [booking,          setBooking]          = useState(false);
+  const [bookError,        setBookError]        = useState('');
+  const [bookSuccess,      setBookSuccess]      = useState(false);
+  const [pickupInputError, setPickupInputError] = useState('');
+  const [dropoffInputError,setDropoffInputError]= useState('');
+  const [pickupGeoFailed,  setPickupGeoFailed]  = useState(false);
+  const [dropoffGeoFailed, setDropoffGeoFailed] = useState(false);
   const [showCancel,   setShowCancel]   = useState(false);
   const [cancelReason, setCancelReason] = useState('');
   const [cancelling,   setCancelling]   = useState(false);
@@ -195,8 +203,11 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
   /* geocode + autocomplete pickup */
   useEffect(() => {
     if (pickupSelected.current) { pickupSelected.current = false; return; }
+    if (!pickup.trim() || !isValidAddressInput(pickup)) return;
     const t = setTimeout(async () => {
-      setPickupCoords(await geocode(pickup));
+      const coords = await geocode(pickup);
+      setPickupCoords(coords);
+      setPickupGeoFailed(pickup.trim().length >= 3 && !coords);
       setPickupSuggestions(await searchAddresses(pickup));
     }, 400);
     return () => clearTimeout(t);
@@ -205,8 +216,11 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
   /* geocode + autocomplete dropoff */
   useEffect(() => {
     if (dropoffSelected.current) { dropoffSelected.current = false; return; }
+    if (!dropoff.trim() || !isValidAddressInput(dropoff)) return;
     const t = setTimeout(async () => {
-      setDropoffCoords(await geocode(dropoff));
+      const coords = await geocode(dropoff);
+      setDropoffCoords(coords);
+      setDropoffGeoFailed(dropoff.trim().length >= 3 && !coords);
       setDropoffSuggestions(await searchAddresses(dropoff));
     }, 400);
     return () => clearTimeout(t);
@@ -404,9 +418,16 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
                       ref={pickupInputRef}
                       value={pickup}
                       onChange={(e) => {
-                        setPickup(e.target.value);
+                        const val = e.target.value;
+                        setPickup(val);
                         setPickupCoords(null);
+                        setPickupGeoFailed(false);
                         if (bookError) setBookError('');
+                        setPickupInputError(
+                          val.trim() && !isValidAddressInput(val)
+                            ? 'Invalid characters. Please enter a real street address.'
+                            : ''
+                        );
                         if (pickupInputRef.current) setPickupRect(pickupInputRef.current.getBoundingClientRect());
                       }}
                       onFocus={() => { if (pickupInputRef.current) setPickupRect(pickupInputRef.current.getBoundingClientRect()); }}
@@ -439,9 +460,16 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
                       ref={dropoffInputRef}
                       value={dropoff}
                       onChange={(e) => {
-                        setDropoff(e.target.value);
+                        const val = e.target.value;
+                        setDropoff(val);
                         setDropoffCoords(null);
+                        setDropoffGeoFailed(false);
                         if (bookError) setBookError('');
+                        setDropoffInputError(
+                          val.trim() && !isValidAddressInput(val)
+                            ? 'Invalid characters. Please enter a real street address.'
+                            : ''
+                        );
                         if (dropoffInputRef.current) setDropoffRect(dropoffInputRef.current.getBoundingClientRect());
                       }}
                       onFocus={() => { if (dropoffInputRef.current) setDropoffRect(dropoffInputRef.current.getBoundingClientRect()); }}
@@ -494,7 +522,7 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
 
                   <button
                     className="btn-portal-cta"
-                    disabled={!pickup.trim() || !dropoff.trim() || !pickupCoords || !dropoffCoords || !routeInfo || booking}
+                    disabled={!pickup.trim() || !dropoff.trim() || !!pickupInputError || !!dropoffInputError || !pickupCoords || !dropoffCoords || !routeInfo || booking}
                     onClick={handleBookRide}
                   >
                     {booking ? 'Requesting…' : 'Request Ride'}
@@ -502,8 +530,20 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
                   {(!pickup.trim() || !dropoff.trim()) && (
                     <p className="book-hint">Enter both pickup and dropoff to continue.</p>
                   )}
-                  {pickup.trim() && dropoff.trim() && (!pickupCoords || !dropoffCoords) && (
-                    <p className="book-hint">Waiting for address to resolve…</p>
+                  {pickup.trim() && pickupInputError && (
+                    <p className="book-hint" style={{ color: 'var(--danger)' }}>{pickupInputError}</p>
+                  )}
+                  {dropoff.trim() && dropoffInputError && (
+                    <p className="book-hint" style={{ color: 'var(--danger)' }}>{dropoffInputError}</p>
+                  )}
+                  {pickup.trim() && !pickupInputError && pickupGeoFailed && (
+                    <p className="book-hint" style={{ color: 'var(--danger)' }}>Pickup not found. Try a more specific address.</p>
+                  )}
+                  {dropoff.trim() && !dropoffInputError && dropoffGeoFailed && (
+                    <p className="book-hint" style={{ color: 'var(--danger)' }}>Dropoff not found. Try a more specific address.</p>
+                  )}
+                  {pickup.trim() && dropoff.trim() && !pickupInputError && !dropoffInputError && !pickupGeoFailed && !dropoffGeoFailed && (!pickupCoords || !dropoffCoords) && (
+                    <p className="book-hint">Resolving addresses…</p>
                   )}
 
                 </>
