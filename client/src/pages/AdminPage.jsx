@@ -66,6 +66,10 @@ const AdminPage = ({ theme, onThemeToggle }) => {
       setError('Pickup and dropoff locations are required.');
       return;
     }
+    if (form.fare !== '' && parseFloat(form.fare) < 0) {
+      setError('Fare cannot be negative.');
+      return;
+    }
     setMutating(true);
     setError('');
     try {
@@ -244,8 +248,8 @@ const AdminPage = ({ theme, onThemeToggle }) => {
                   <tr key={r.ride_id}>
                     <td><span className="ride-id-link">R{r.ride_id}</span></td>
                     <td style={{ whiteSpace: 'nowrap', color: 'var(--text-muted)', fontSize: '0.82rem' }}>
-                      {r.created_at
-                        ? new Date(r.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })
+                      {r.createdAt
+                        ? new Date(r.createdAt).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })
                         : '—'}
                     </td>
                     <td>{r.pickup_location}</td>

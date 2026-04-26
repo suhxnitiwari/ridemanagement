@@ -141,6 +141,7 @@ const ActiveRideCard = ({ ride, driver, pickupCoords, dropoffCoords }) => {
 /* ── Rider Portal Page ─────────────────────────────────────────────────────── */
 const RiderPortalPage = ({ theme, onThemeToggle }) => {
   const { getToken } = useAuth();
+  const { user } = useUser();
   const [activeTab, setActiveTab] = useState('book');
   const [pickup,    setPickup]    = useState('');
   const [dropoff,   setDropoff]   = useState('');
@@ -175,6 +176,8 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
   const [aiError,       setAiError]       = useState('');
   const [strataOpen,    setStrataOpen]    = useState(false);
 
+  const [riderStats,              setRiderStats]              = useState(null);
+
   const [activeRide,              setActiveRide]              = useState(null);
   const [activeDriver,            setActiveDriver]            = useState(null);
   const [activeRidePickupCoords,  setActiveRidePickupCoords]  = useState(null);
@@ -185,7 +188,7 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
   const baseFare   = 2.50;
   const PER_MILE   = 1.75;
   const distFare   = routeInfo ? routeInfo.miles * PER_MILE : 0;
-  const serviceFee = (pickup || dropoff) ? 1.20 : 0;
+  const serviceFee = routeInfo ? 1.20 : 0;
   const total      = Math.max(baseFare + distFare + serviceFee, 5.00);
 
   /* geocode + autocomplete pickup */
@@ -213,6 +216,31 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
     if (!pickupCoords || !dropoffCoords) { setRouteInfo(null); return; }
     getRoute(pickupCoords, dropoffCoords).then(setRouteInfo);
   }, [pickupCoords, dropoffCoords]);
+
+  /* fetch rider's real stats once on mount */
+  useEffect(() => {
+    ridesApi.getAll()
+      .then((res) => {
+        const raw = res.data?.data ?? res.data ?? [];
+        const all = Array.isArray(raw) ? raw : [];
+        const done = all.filter((r) => r.status === 'completed' && r.fare);
+        const totalSpent = done.reduce((sum, r) => sum + parseFloat(r.fare), 0);
+        const now = new Date();
+        const monthDone = done.filter((r) => {
+          const d = new Date(r.createdAt);
+          return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+        });
+        const monthSpent = monthDone.reduce((sum, r) => sum + parseFloat(r.fare), 0);
+        setRiderStats({
+          total: all.length,
+          totalSpent,
+          avg: done.length > 0 ? totalSpent / done.length : 0,
+          monthCount: monthDone.length,
+          monthSpent,
+        });
+      })
+      .catch(() => {});
+  }, []);
 
   const handleGetSuggestions = async () => {
     const dest = dropoff.trim();
@@ -370,6 +398,8 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
                       value={pickup}
                       onChange={(e) => {
                         setPickup(e.target.value);
+                        setPickupCoords(null);
+                        if (bookError) setBookError('');
                         if (pickupInputRef.current) setPickupRect(pickupInputRef.current.getBoundingClientRect());
                       }}
                       onFocus={() => { if (pickupInputRef.current) setPickupRect(pickupInputRef.current.getBoundingClientRect()); }}
@@ -403,6 +433,8 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
                       value={dropoff}
                       onChange={(e) => {
                         setDropoff(e.target.value);
+                        setDropoffCoords(null);
+                        if (bookError) setBookError('');
                         if (dropoffInputRef.current) setDropoffRect(dropoffInputRef.current.getBoundingClientRect());
                       }}
                       onFocus={() => { if (dropoffInputRef.current) setDropoffRect(dropoffInputRef.current.getBoundingClientRect()); }}
@@ -455,13 +487,16 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
 
                   <button
                     className="btn-portal-cta"
-                    disabled={!pickup.trim() || !dropoff.trim() || booking}
+                    disabled={!pickup.trim() || !dropoff.trim() || !pickupCoords || !dropoffCoords || !routeInfo || booking}
                     onClick={handleBookRide}
                   >
                     {booking ? 'Requesting…' : 'Request Ride'}
                   </button>
                   {(!pickup.trim() || !dropoff.trim()) && (
                     <p className="book-hint">Enter both pickup and dropoff to continue.</p>
+                  )}
+                  {pickup.trim() && dropoff.trim() && (!pickupCoords || !dropoffCoords) && (
+                    <p className="book-hint">Waiting for address to resolve…</p>
                   )}
 
                 </>
@@ -473,18 +508,26 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
             <div className="portal-stats-row">
               <div className="portal-stat-card">
                 <div className="portal-stat-label">Total Rides</div>
-                <div className="portal-stat-value">42</div>
+                <div className="portal-stat-value">{riderStats ? riderStats.total : '—'}</div>
                 <div className="portal-stat-sub">lifetime rides</div>
               </div>
               <div className="portal-stat-card">
                 <div className="portal-stat-label">Total Spent</div>
-                <div className="portal-stat-value stat-magenta">$384</div>
-                <div className="portal-stat-sub">avg $9.14 / ride</div>
+                <div className="portal-stat-value stat-magenta">
+                  {riderStats ? `$${riderStats.totalSpent.toFixed(2)}` : '—'}
+                </div>
+                <div className="portal-stat-sub">
+                  {riderStats && riderStats.avg > 0 ? `avg $${riderStats.avg.toFixed(2)} / ride` : 'avg — / ride'}
+                </div>
               </div>
               <div className="portal-stat-card portal-stat-full">
                 <div className="portal-stat-label">Spent This Month</div>
-                <div className="portal-stat-value stat-magenta">$47.22</div>
-                <div className="portal-stat-sub">3 rides in April · +12% vs last month</div>
+                <div className="portal-stat-value stat-magenta">
+                  {riderStats ? `$${riderStats.monthSpent.toFixed(2)}` : '—'}
+                </div>
+                <div className="portal-stat-sub">
+                  {riderStats ? `${riderStats.monthCount} ride${riderStats.monthCount !== 1 ? 's' : ''} this month` : ''}
+                </div>
               </div>
             </div>
 
@@ -752,12 +795,12 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
                 </thead>
                 <tbody>
                   {[...rides]
-                    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+                    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
                     .map((r) => (
                     <tr key={r.ride_id}>
                       <td><span className="ride-id-link">R{r.ride_id}</span></td>
                       <td style={{ whiteSpace: 'nowrap', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                        {r.created_at ? new Date(r.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—'}
+                        {r.createdAt ? new Date(r.createdAt).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—'}
                       </td>
                       <td>{r.pickup_location}</td>
                       <td>{r.dropoff_location}</td>
@@ -805,12 +848,12 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
                 </thead>
                 <tbody>
                   {[...payments]
-                    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+                    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
                     .map((p) => (
                     <tr key={p.payment_id}>
                       <td><span className="ride-id-link">PAY-{p.payment_id}</span></td>
                       <td style={{ whiteSpace: 'nowrap', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                        {p.created_at ? new Date(p.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—'}
+                        {p.createdAt ? new Date(p.createdAt).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—'}
                       </td>
                       <td><span className="ride-id-link">R{p.ride_id}</span></td>
                       <td><strong>${parseFloat(p.amount).toFixed(2)}</strong></td>
@@ -840,25 +883,47 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
           <div className="profile-layout">
             <div className="p-card profile-card">
               <div className="profile-avatar-row">
-                <div className="profile-avatar">ST</div>
+                <div className="profile-avatar">
+                  {user?.firstName && user?.lastName
+                    ? `${user.firstName[0]}${user.lastName[0]}`.toUpperCase()
+                    : user?.firstName
+                      ? user.firstName.slice(0, 2).toUpperCase()
+                      : '?'}
+                </div>
                 <div>
-                  <div className="profile-name">Suhani Tiwari</div>
-                  <div className="profile-since">Member since Jan 2026</div>
+                  <div className="profile-name">
+                    {user?.firstName && user?.lastName
+                      ? `${user.firstName} ${user.lastName}`
+                      : user?.firstName || '—'}
+                  </div>
+                  <div className="profile-since">
+                    {user?.createdAt
+                      ? `Member since ${new Date(user.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`
+                      : 'Member'}
+                  </div>
                 </div>
               </div>
 
               <div className="section-label">Account info</div>
               <div className="account-field">
                 <span className="account-field-label">Full Name</span>
-                <span className="account-field-value">Suhani Tiwari</span>
+                <span className="account-field-value">
+                  {user?.firstName && user?.lastName
+                    ? `${user.firstName} ${user.lastName}`
+                    : user?.firstName || '—'}
+                </span>
               </div>
               <div className="account-field">
                 <span className="account-field-label">Email</span>
-                <span className="account-field-value">rider@rideflow.app</span>
+                <span className="account-field-value">
+                  {user?.emailAddresses?.[0]?.emailAddress || '—'}
+                </span>
               </div>
               <div className="account-field">
                 <span className="account-field-label">Phone</span>
-                <span className="account-field-value">(512) 471-5921</span>
+                <span className="account-field-value">
+                  {user?.phoneNumbers?.[0]?.phoneNumber || '—'}
+                </span>
               </div>
               <div className="account-field">
                 <span className="account-field-label">Default Payment</span>
@@ -887,17 +952,21 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
             <div className="profile-stats-col">
               <div className="p-card profile-stat-card">
                 <div className="portal-stat-label">Total Rides</div>
-                <div className="portal-stat-value">42</div>
+                <div className="portal-stat-value">{riderStats ? riderStats.total : '—'}</div>
                 <div className="portal-stat-sub">lifetime rides</div>
               </div>
               <div className="p-card profile-stat-card">
                 <div className="portal-stat-label">Total Spent</div>
-                <div className="portal-stat-value stat-magenta">$384.00</div>
+                <div className="portal-stat-value stat-magenta">
+                  {riderStats ? `$${riderStats.totalSpent.toFixed(2)}` : '—'}
+                </div>
                 <div className="portal-stat-sub">all time</div>
               </div>
               <div className="p-card profile-stat-card">
                 <div className="portal-stat-label">Avg Fare</div>
-                <div className="portal-stat-value">$9.14</div>
+                <div className="portal-stat-value">
+                  {riderStats && riderStats.avg > 0 ? `$${riderStats.avg.toFixed(2)}` : '—'}
+                </div>
                 <div className="portal-stat-sub">per ride</div>
               </div>
             </div>
