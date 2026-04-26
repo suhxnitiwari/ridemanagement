@@ -797,11 +797,19 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
                 className="btn btn-danger"
                 disabled={!cancelReason || cancelling}
                 onClick={async () => {
+                  if (!activeRide) return;
                   setCancelling(true);
-                  await new Promise((r) => setTimeout(r, 800));
-                  setCancelling(false);
-                  setShowCancel(false);
-                  setCancelReason('');
+                  try {
+                    await ridesApi.update(activeRide.ride_id, { status: 'cancelled' });
+                    setActiveRide(null);
+                    setRides([]);
+                  } catch (err) {
+                    console.error('Cancel failed:', err.response?.data || err.message);
+                  } finally {
+                    setCancelling(false);
+                    setShowCancel(false);
+                    setCancelReason('');
+                  }
                 }}
               >
                 {cancelling ? 'Cancelling…' : 'Confirm Cancel ($2.00)'}
