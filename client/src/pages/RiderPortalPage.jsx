@@ -247,7 +247,7 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
         });
         const monthSpent = monthDone.reduce((sum, r) => sum + parseFloat(r.fare), 0);
         setRiderStats({
-          total: all.length,
+          total: all.filter((r) => r.status !== 'cancelled').length,
           totalSpent,
           avg: done.length > 0 ? totalSpent / done.length : 0,
           monthCount: monthDone.length,
@@ -288,7 +288,16 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
     try {
       const token = await getToken();
       if (token) setAuthToken(token);
-      await ridesApi.create({ pickup_location: pickup, dropoff_location: dropoff, fare: total });
+      const rideRes = await ridesApi.create({ pickup_location: pickup, dropoff_location: dropoff, fare: total });
+      const newRide = rideRes.data?.data;
+      if (newRide?.ride_id) {
+        await paymentsApi.create({
+          ride_id: newRide.ride_id,
+          amount: total,
+          payment_method: riderProfile?.default_payment_method || 'credit_card',
+          status: 'pending',
+        });
+      }
       setBookSuccess(true);
       setPickup('');
       setDropoff('');
