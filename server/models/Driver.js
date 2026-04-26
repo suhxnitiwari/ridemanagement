@@ -49,6 +49,11 @@ const Driver = sequelize.define('Driver', {
     defaultValue: 5.00,
     validate: { min: 1.0, max: 5.0 },
   },
+  clerk_user_id: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    unique: true,
+  },
 }, {
   tableName: 'drivers',
   underscored: true,

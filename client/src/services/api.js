@@ -26,6 +26,7 @@ export const ridersApi = {
 
 export const driversApi = {
   getAll:   (search = '') => api.get('/drivers',        { params: search ? { search } : {} }),
+  getMe:    ()            => api.get('/drivers/me'),
   getById:  (id)          => api.get(`/drivers/${id}`),
   getStats: ()            => api.get('/drivers/stats'),
   create:   (data)        => api.post('/drivers',       data),

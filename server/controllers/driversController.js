@@ -1,5 +1,26 @@
 const { Driver, Ride } = require('../models');
 const { Op } = require('sequelize');
+const { clerkClient } = require('@clerk/express');
+
+// GET /api/drivers/me
+const getMyDriver = async (req, res) => {
+  try {
+    const { userId } = req.auth;
+    let driver = await Driver.findOne({ where: { clerk_user_id: userId } });
+    if (!driver) {
+      const clerkUser = await clerkClient.users.getUser(userId);
+      const email = clerkUser.emailAddresses?.[0]?.emailAddress;
+      if (email) driver = await Driver.findOne({ where: { email } });
+      if (driver) await driver.update({ clerk_user_id: userId });
+    }
+    if (!driver) {
+      return res.status(404).json({ success: false, message: 'Driver profile not found' });
+    }
+    res.json({ success: true, data: driver });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
 
 // GET /api/drivers
 const getAllDrivers = async (req, res) => {
@@ -130,4 +151,4 @@ const getDriverStats = async (req, res) => {
   }
 };
 
-module.exports = { getAllDrivers, getDriverById, createDriver, updateDriver, deleteDriver, getDriverStats };
+module.exports = { getAllDrivers, getMyDriver, getDriverById, createDriver, updateDriver, deleteDriver, getDriverStats };

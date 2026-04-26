@@ -947,23 +947,6 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
                 </span>
               </div>
 
-              <div className="section-label" style={{ marginTop: '1.5rem' }}>Ride Preferences</div>
-              <div className="account-field">
-                <span className="account-field-label">Driver Gender</span>
-                <span className="account-field-value">Female preferred</span>
-              </div>
-              <div className="account-field">
-                <span className="account-field-label">Vehicle Type</span>
-                <span className="account-field-value">Sedan</span>
-              </div>
-              <div className="account-field">
-                <span className="account-field-label">Music</span>
-                <span className="account-field-value">Quiet / No music</span>
-              </div>
-              <div className="account-field">
-                <span className="account-field-label">Conversation</span>
-                <span className="account-field-value">Minimal chat</span>
-              </div>
             </div>
 
             <div className="profile-stats-col">

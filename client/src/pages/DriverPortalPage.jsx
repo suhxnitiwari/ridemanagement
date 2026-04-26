@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useUser } from '@clerk/react';
 import PortalNavbar from '../components/PortalNavbar';
-import { ridesApi, paymentsApi } from '../services/api';
+import { driversApi, ridesApi, paymentsApi } from '../services/api';
 
 const TABS = [
   { id: 'dashboard', label: 'Dashboard'  },
@@ -13,15 +13,7 @@ const TABS = [
 const capWords = (s) =>
   s.split('_').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 
-const EARNINGS_MOCK = [
-  { label: 'Mon', amount: 67,  pct: 74  },
-  { label: 'Tue', amount: 74,  pct: 81  },
-  { label: 'Wed', amount: 91,  pct: 100 },
-  { label: 'Thu', amount: 84,  pct: 92  },
-  { label: 'Fri', amount: 110, pct: 100 },
-  { label: 'Sat', amount: 98,  pct: 89  },
-  { label: 'Sun', amount: 55,  pct: 60  },
-];
+const fmt = (n) => `$${n.toFixed(2)}`;
 
 /* ── In-Progress Ride Card ─────────────────────────────────────────────────── */
 const InProgressCard = ({ ride, onComplete, onCancel, mutating }) => {
@@ -49,7 +41,7 @@ const InProgressCard = ({ ride, onComplete, onCancel, mutating }) => {
           </div>
         </div>
         <div className="ip-fare-info">
-          <div className="ip-fare">{ride.fare ? `$${parseFloat(ride.fare).toFixed(2)}` : '—'}</div>
+          <div className="ip-fare">{ride.fare ? fmt(parseFloat(ride.fare)) : '—'}</div>
           <div className="ip-distance">Ride #{ride.ride_id}</div>
         </div>
       </div>
@@ -70,9 +62,9 @@ const InProgressCard = ({ ride, onComplete, onCancel, mutating }) => {
 
 /* ── DriverPortalPage ──────────────────────────────────────────────────────── */
 const DriverPortalPage = ({ theme, onThemeToggle }) => {
-  const [activeTab, setActiveTab] = useState('dashboard');
-
-  // Rides + payments state
+  const [activeTab,      setActiveTab]      = useState('dashboard');
+  const [driverProfile,  setDriverProfile]  = useState(null);
+  const [allRides,       setAllRides]       = useState([]);
   const [availableRides, setAvailableRides] = useState([]);
   const [myRides,        setMyRides]        = useState([]);
   const [payments,       setPayments]       = useState([]);
@@ -83,39 +75,110 @@ const DriverPortalPage = ({ theme, onThemeToggle }) => {
   const [mutating,       setMutating]       = useState(null);
   const [isAvailable,    setIsAvailable]    = useState(true);
 
-  // ── Fetch active ride for dashboard ────────────────────────────────────────
+  // ── Fetch driver profile + all rides on mount ──────────────────────────────
   useEffect(() => {
+    driversApi.getMe()
+      .then((res) => setDriverProfile(res.data?.data ?? null))
+      .catch(() => {});
+
+    ridesApi.getAll()
+      .then((res) => {
+        const raw = res.data?.data ?? res.data ?? [];
+        setAllRides(Array.isArray(raw) ? raw : []);
+      })
+      .catch(() => {});
+
     ridesApi.getAll({ statuses: 'in_progress,accepted,en_route' })
       .then((res) => setActiveRide(res.data.data?.[0] ?? null))
       .catch(() => {});
   }, []);
 
-  // ── Fetch rides ────────────────────────────────────────────────────────────
+  // ── Tab-triggered fetches ──────────────────────────────────────────────────
   useEffect(() => {
     if (activeTab === 'find' && availableRides.length === 0) {
       setLoadingRides(true);
       ridesApi.getAll({ status: 'requested' })
-        .then((res) => setAvailableRides(res.data.data))
+        .then((res) => setAvailableRides(res.data.data ?? []))
         .catch(() => {})
         .finally(() => setLoadingRides(false));
     }
     if (activeTab === 'my-rides' && myRides.length === 0) {
       setLoadingRides(true);
       ridesApi.getAll()
-        .then((res) => setMyRides(res.data.data))
+        .then((res) => setMyRides(res.data.data ?? []))
         .catch(() => {})
         .finally(() => setLoadingRides(false));
     }
     if (activeTab === 'earnings' && payments.length === 0) {
       setLoadingPayments(true);
       paymentsApi.getAll()
-        .then((res) => setPayments(res.data.data))
+        .then((res) => setPayments(res.data.data ?? []))
         .catch(() => {})
         .finally(() => setLoadingPayments(false));
     }
   }, [activeTab]);
 
-  // ── Accept ride ────────────────────────────────────────────────────────────
+  // ── Computed earnings from real rides ──────────────────────────────────────
+  const driverRides = useMemo(() => {
+    if (!driverProfile) return [];
+    return allRides.filter((r) => r.driver_id === driverProfile.driver_id && r.status === 'completed' && r.fare);
+  }, [allRides, driverProfile]);
+
+  const earningsStats = useMemo(() => {
+    const now = new Date();
+    const startOf = (d) => { const c = new Date(d); c.setHours(0,0,0,0); return c; };
+    const todayStart = startOf(now);
+    const weekStart  = startOf(new Date(now.setDate(now.getDate() - new Date().getDay())));
+    const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+    const yearStart  = new Date(new Date().getFullYear(), 0, 1);
+
+    const sum = (rides) => rides.reduce((s, r) => s + parseFloat(r.fare), 0);
+
+    const today = driverRides.filter((r) => new Date(r.createdAt) >= todayStart);
+    const week  = driverRides.filter((r) => new Date(r.createdAt) >= weekStart);
+    const month = driverRides.filter((r) => new Date(r.createdAt) >= monthStart);
+    const year  = driverRides.filter((r) => new Date(r.createdAt) >= yearStart);
+
+    return {
+      today:      { amount: sum(today), count: today.length },
+      week:       { amount: sum(week),  count: week.length  },
+      month:      { amount: sum(month), count: month.length },
+      year:       { amount: sum(year),  count: year.length  },
+      total:      driverRides.length,
+    };
+  }, [driverRides]);
+
+  const weeklyChart = useMemo(() => {
+    const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const now = new Date();
+    const data = DAY_LABELS.map((label, idx) => {
+      const target = new Date(now);
+      target.setDate(now.getDate() - now.getDay() + idx);
+      const dayStr = target.toDateString();
+      const amount = driverRides
+        .filter((r) => new Date(r.createdAt).toDateString() === dayStr)
+        .reduce((s, r) => s + parseFloat(r.fare), 0);
+      return { label, amount };
+    });
+    const max = Math.max(...data.map((d) => d.amount), 1);
+    return data.map((d) => ({ ...d, pct: Math.round((d.amount / max) * 100) }));
+  }, [driverRides]);
+
+  const recentCompleted = useMemo(() =>
+    [...driverRides]
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+      .slice(0, 4),
+  [driverRides]);
+
+  const completionRate = useMemo(() => {
+    if (!driverProfile) return null;
+    const mine = allRides.filter((r) => r.driver_id === driverProfile.driver_id);
+    const done = mine.filter((r) => r.status === 'completed').length;
+    const total = mine.filter((r) => ['completed', 'cancelled'].includes(r.status)).length;
+    return total > 0 ? Math.round((done / total) * 100) : null;
+  }, [allRides, driverProfile]);
+
+  // ── Accept / Complete / Cancel ─────────────────────────────────────────────
   const handleAcceptRide = async (ride) => {
     setAccepting(ride.ride_id);
     try {
@@ -125,7 +188,6 @@ const DriverPortalPage = ({ theme, onThemeToggle }) => {
     finally { setAccepting(null); }
   };
 
-  // ── Complete / Cancel active ride ──────────────────────────────────────────
   const handleCompleteRide = async () => {
     if (!activeRide) return;
     setMutating('complete');
@@ -133,6 +195,7 @@ const DriverPortalPage = ({ theme, onThemeToggle }) => {
       await ridesApi.update(activeRide.ride_id, { status: 'completed' });
       setActiveRide(null);
       setMyRides([]);
+      setAllRides([]);
     } catch (err) {
       console.error('Complete ride failed:', err.response?.data || err.message);
     } finally { setMutating(null); }
@@ -145,12 +208,21 @@ const DriverPortalPage = ({ theme, onThemeToggle }) => {
       await ridesApi.update(activeRide.ride_id, { status: 'cancelled' });
       setActiveRide(null);
       setMyRides([]);
+      setAllRides([]);
     } catch (err) {
       console.error('Cancel ride failed:', err.response?.data || err.message);
     } finally { setMutating(null); }
   };
 
-  // ── Earnings totals from payments ──────────────────────────────────────────
+  // ── Navbar ─────────────────────────────────────────────────────────────────
+  const { user } = useUser();
+  const userInitials = user?.firstName && user?.lastName
+    ? `${user.firstName[0]}${user.lastName[0]}`.toUpperCase()
+    : user?.firstName ? user.firstName.slice(0, 2).toUpperCase() : '';
+  const userName = user?.firstName && user?.lastName
+    ? `${user.firstName} ${user.lastName[0]}.`
+    : user?.firstName || '';
+
   const extraPill = (
     <button
       className={`avail-pill${isAvailable ? '' : ' avail-pill-off'}`}
@@ -160,17 +232,6 @@ const DriverPortalPage = ({ theme, onThemeToggle }) => {
       {isAvailable ? 'Available' : 'Not Available'}
     </button>
   );
-
-  const { user } = useUser();
-  // Get initials from Clerk user
-  const userInitials = user?.firstName && user?.lastName
-    ? `${user.firstName[0]}${user.lastName[0]}`.toUpperCase()
-    : user?.firstName
-      ? user.firstName.slice(0, 2).toUpperCase()
-      : '';
-  const userName = user?.firstName && user?.lastName
-    ? `${user.firstName} ${user.lastName[0]}.`
-    : user?.firstName || '';
 
   return (
     <div className="portal-shell">
@@ -194,32 +255,32 @@ const DriverPortalPage = ({ theme, onThemeToggle }) => {
             <div className="driver-dashboard-subtitle">Your performance at a glance</div>
           </div>
 
-          {/* Stats row */}
           <div className="driver-stats-row">
             <div className="driver-stat-card">
               <div className="driver-stat-label">Today's Earnings</div>
-              <div className="driver-stat-value">$84</div>
-              <div className="driver-stat-sub">+12% vs yesterday</div>
+              <div className="driver-stat-value">{fmt(earningsStats.today.amount)}</div>
+              <div className="driver-stat-sub">{earningsStats.today.count} ride{earningsStats.today.count !== 1 ? 's' : ''}</div>
             </div>
             <div className="driver-stat-card">
               <div className="driver-stat-label">This Week</div>
-              <div className="driver-stat-value">$521</div>
-              <div className="driver-stat-sub">7 rides</div>
+              <div className="driver-stat-value">{fmt(earningsStats.week.amount)}</div>
+              <div className="driver-stat-sub">{earningsStats.week.count} ride{earningsStats.week.count !== 1 ? 's' : ''}</div>
             </div>
             <div className="driver-stat-card">
               <div className="driver-stat-label">This Month</div>
-              <div className="driver-stat-value">$1,840</div>
-              <div className="driver-stat-sub">24 rides</div>
+              <div className="driver-stat-value">{fmt(earningsStats.month.amount)}</div>
+              <div className="driver-stat-sub">{earningsStats.month.count} ride{earningsStats.month.count !== 1 ? 's' : ''}</div>
             </div>
             <div className="driver-stat-card">
               <div className="driver-stat-label">Driver Rating</div>
-              <div className="driver-stat-value">4.9 ★</div>
-              <div className="driver-stat-sub">214 total rides</div>
+              <div className="driver-stat-value">
+                {driverProfile?.rating ? `${parseFloat(driverProfile.rating).toFixed(1)} ★` : '—'}
+              </div>
+              <div className="driver-stat-sub">{earningsStats.total} total ride{earningsStats.total !== 1 ? 's' : ''}</div>
             </div>
           </div>
 
           <div className="driver-page">
-            {/* Left panel */}
             <div className="portal-panel">
               <div className="section-label">Current Ride</div>
               <InProgressCard
@@ -232,44 +293,48 @@ const DriverPortalPage = ({ theme, onThemeToggle }) => {
               <div className="section-label" style={{ marginTop: '1.5rem' }}>Weekly Earnings</div>
               <div className="p-card">
                 <div className="earnings-chart">
-                  {EARNINGS_MOCK.map((e) => (
+                  {weeklyChart.map((e) => (
                     <div className="earnings-row" key={e.label}>
                       <span className="earnings-day">{e.label}</span>
                       <div className="earnings-bar-wrap">
                         <div className={`earnings-bar earnings-bar-${e.pct}`} />
                       </div>
-                      <span className="earnings-amt">${e.amount}</span>
+                      <span className="earnings-amt">{fmt(e.amount)}</span>
                     </div>
                   ))}
                 </div>
               </div>
             </div>
 
-            {/* Right panel */}
             <div className="portal-panel">
-              <div className="section-label">Acceptance Rate</div>
+              <div className="section-label">Completion Rate</div>
               <div className="p-card acceptance-card">
-                <div className="acceptance-rate">91%</div>
-                <div className="acceptance-sub">This week · target ≥ 85%</div>
+                <div className="acceptance-rate">
+                  {completionRate !== null ? `${completionRate}%` : '—'}
+                </div>
+                <div className="acceptance-sub">
+                  {completionRate !== null ? `${earningsStats.total} completed rides` : 'No rides yet'}
+                </div>
                 <div className="acceptance-bar-wrap">
-                  <div className="acceptance-bar" />
+                  <div className="acceptance-bar" style={{ width: `${completionRate ?? 0}%` }} />
                 </div>
               </div>
 
               <div className="section-label" style={{ marginTop: '1.5rem' }}>Recent Completed</div>
               <div className="p-card">
-                {[
-                  { route: 'Airport → Downtown',      id: 'R1042', fare: '$18.40' },
-                  { route: 'UT Campus → Zilker Park', id: 'R1039', fare: '$11.20' },
-                  { route: 'East 6th → Domain',       id: 'R1035', fare: '$16.90' },
-                  { route: 'Rainey St → SoCo',        id: 'R1031', fare: '$9.75'  },
-                ].map((item) => (
-                  <div className="completed-item" key={item.id}>
+                {recentCompleted.length === 0 ? (
+                  <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', padding: '0.5rem 0' }}>
+                    No completed rides yet.
+                  </div>
+                ) : recentCompleted.map((r) => (
+                  <div className="completed-item" key={r.ride_id}>
                     <div>
-                      <div className="completed-route">{item.route}</div>
-                      <div className="completed-id">{item.id}</div>
+                      <div className="completed-route">
+                        {r.pickup_location} → {r.dropoff_location}
+                      </div>
+                      <div className="completed-id">R{r.ride_id}</div>
                     </div>
-                    <div className="completed-fare">{item.fare}</div>
+                    <div className="completed-fare">{r.fare ? fmt(parseFloat(r.fare)) : '—'}</div>
                   </div>
                 ))}
               </div>
@@ -301,10 +366,9 @@ const DriverPortalPage = ({ theme, onThemeToggle }) => {
                   <div className="rr-header">
                     <span className="rr-id">Ride #{ride.ride_id}</span>
                     <span className="rr-fare">
-                      ${ride.fare && parseFloat(ride.fare) > 0 ? parseFloat(ride.fare).toFixed(2) : '5.00'}
+                      {ride.fare && parseFloat(ride.fare) > 0 ? fmt(parseFloat(ride.fare)) : '$5.00'}
                     </span>
                   </div>
-
                   <div className="rr-stops">
                     <div className="rr-stop">
                       <div className="stop-dot-pickup" />
@@ -316,7 +380,6 @@ const DriverPortalPage = ({ theme, onThemeToggle }) => {
                       <span>{ride.dropoff_location}</span>
                     </div>
                   </div>
-
                   <div className="rr-actions">
                     <button
                       className="btn-decline"
@@ -345,13 +408,13 @@ const DriverPortalPage = ({ theme, onThemeToggle }) => {
         <div className="history-page">
           <div className="page-header">
             <h1>My Rides</h1>
-            <p>All rides on the RideFlow platform</p>
+            <p>Rides assigned to you on the RideFlow platform</p>
           </div>
           <div className="table-wrap">
             {loadingRides ? (
               <div className="table-empty">Loading rides…</div>
-            ) : myRides.length === 0 ? (
-              <div className="table-empty">No rides found.</div>
+            ) : myRides.filter((r) => !driverProfile || r.driver_id === driverProfile.driver_id).length === 0 ? (
+              <div className="table-empty">No rides assigned to you yet.</div>
             ) : (
               <table>
                 <thead>
@@ -364,19 +427,21 @@ const DriverPortalPage = ({ theme, onThemeToggle }) => {
                   </tr>
                 </thead>
                 <tbody>
-                  {myRides.map((r) => (
-                    <tr key={r.ride_id}>
-                      <td><span className="ride-id-link">R{r.ride_id}</span></td>
-                      <td>{r.pickup_location}</td>
-                      <td>{r.dropoff_location}</td>
-                      <td>
-                        <span className={`status-badge status-${r.status}`}>
-                          {capWords(r.status)}
-                        </span>
-                      </td>
-                      <td>{r.fare ? `$${parseFloat(r.fare).toFixed(2)}` : '—'}</td>
-                    </tr>
-                  ))}
+                  {myRides
+                    .filter((r) => !driverProfile || r.driver_id === driverProfile.driver_id)
+                    .map((r) => (
+                      <tr key={r.ride_id}>
+                        <td><span className="ride-id-link">R{r.ride_id}</span></td>
+                        <td>{r.pickup_location}</td>
+                        <td>{r.dropoff_location}</td>
+                        <td>
+                          <span className={`status-badge status-${r.status}`}>
+                            {capWords(r.status)}
+                          </span>
+                        </td>
+                        <td>{r.fare ? fmt(parseFloat(r.fare)) : '—'}</td>
+                      </tr>
+                    ))}
                 </tbody>
               </table>
             )}
@@ -392,50 +457,45 @@ const DriverPortalPage = ({ theme, onThemeToggle }) => {
             <p>Your complete earnings breakdown</p>
           </div>
 
-          {/* Period totals */}
           <div className="earnings-totals-row">
             <div className="earnings-total-card">
               <div className="et-label">Today</div>
-              <div className="et-value">$84.00</div>
-              <div className="et-sub">4 rides</div>
+              <div className="et-value">{fmt(earningsStats.today.amount)}</div>
+              <div className="et-sub">{earningsStats.today.count} ride{earningsStats.today.count !== 1 ? 's' : ''}</div>
             </div>
             <div className="earnings-total-card">
               <div className="et-label">This Week</div>
-              <div className="et-value">$521.00</div>
-              <div className="et-sub">7 rides</div>
+              <div className="et-value">{fmt(earningsStats.week.amount)}</div>
+              <div className="et-sub">{earningsStats.week.count} ride{earningsStats.week.count !== 1 ? 's' : ''}</div>
             </div>
             <div className="earnings-total-card">
               <div className="et-label">This Month</div>
-              <div className="et-value">$1,840.00</div>
-              <div className="et-sub">24 rides</div>
+              <div className="et-value">{fmt(earningsStats.month.amount)}</div>
+              <div className="et-sub">{earningsStats.month.count} ride{earningsStats.month.count !== 1 ? 's' : ''}</div>
             </div>
             <div className="earnings-total-card highlight">
               <div className="et-label">This Year</div>
-              <div className="et-value">$9,320.00</div>
-              <div className="et-sub">214 rides total</div>
+              <div className="et-value">{fmt(earningsStats.year.amount)}</div>
+              <div className="et-sub">{earningsStats.year.count} ride{earningsStats.year.count !== 1 ? 's' : ''} total</div>
             </div>
           </div>
 
-          {/* Weekly bar chart */}
           <div className="p-card earnings-chart-card">
             <div className="earnings-chart-title">Weekly Breakdown</div>
             <div className="earnings-chart earnings-chart-lg">
-              {EARNINGS_MOCK.map((e) => (
+              {weeklyChart.map((e) => (
                 <div className="earnings-row" key={e.label}>
                   <span className="earnings-day">{e.label}</span>
                   <div className="earnings-bar-wrap">
                     <div className={`earnings-bar earnings-bar-${e.pct}`} />
                   </div>
-                  <span className="earnings-amt">${e.amount}</span>
+                  <span className="earnings-amt">{fmt(e.amount)}</span>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Payments table */}
-          <div className="section-label" style={{ marginBottom: '0.75rem' }}>
-            Payment Records
-          </div>
+          <div className="section-label" style={{ marginBottom: '0.75rem' }}>Payment Records</div>
           <div className="table-wrap">
             {loadingPayments ? (
               <div className="table-empty">Loading payments…</div>
@@ -457,7 +517,7 @@ const DriverPortalPage = ({ theme, onThemeToggle }) => {
                     <tr key={p.payment_id}>
                       <td><span className="ride-id-link">PAY-{p.payment_id}</span></td>
                       <td><span className="ride-id-link">R{p.ride_id}</span></td>
-                      <td><strong>${parseFloat(p.amount).toFixed(2)}</strong></td>
+                      <td><strong>{fmt(parseFloat(p.amount))}</strong></td>
                       <td>{capWords(p.payment_method)}</td>
                       <td>
                         <span className={`status-badge status-${p.status}`}>
@@ -472,7 +532,6 @@ const DriverPortalPage = ({ theme, onThemeToggle }) => {
           </div>
         </div>
       )}
-
     </div>
   );
 };
