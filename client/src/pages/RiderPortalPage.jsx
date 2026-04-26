@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { useUser, useAuth } from '@clerk/react';
 import PortalNavbar from '../components/PortalNavbar';
-import { ridesApi, paymentsApi, aiApi, setAuthToken } from '../services/api';
+import { ridesApi, driversApi, paymentsApi, aiApi, setAuthToken } from '../services/api';
 
 const RideMap = lazy(() => import('../components/RideMap'));
 
@@ -59,8 +59,23 @@ const TABS = [
 
 const STATUS_STEPS = ['Requested', 'Accepted', 'En Route', 'In Progress', 'Done'];
 
-const MOCK_PICKUP_COORDS  = [30.2849, -97.7341];
-const MOCK_DROPOFF_COORDS = [30.2672, -97.7431];
+const STATUS_STEP_INDEX = {
+  requested:   0,
+  accepted:    1,
+  en_route:    2,
+  in_progress: 3,
+  completed:   4,
+};
+
+const STATUS_TEXT = {
+  requested:   'Waiting for a driver to accept your ride',
+  accepted:    'Driver accepted — heading to your pickup',
+  en_route:    'Driver en route to your pickup',
+  in_progress: 'Your ride is in progress',
+};
+
+const FALLBACK_PICKUP  = [30.2849, -97.7341];
+const FALLBACK_DROPOFF = [30.2672, -97.7431];
 
 const capWords = (s) =>
   s.split('_').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
@@ -68,40 +83,60 @@ const capWords = (s) =>
 const statusClass = (s) => `status-badge status-${s}`;
 
 /* ── Active Ride Card ──────────────────────────────────────────────────────── */
-const ActiveRideCard = () => (
-  <div className="active-ride-card">
-    <div className="active-ride-driver-row">
-      <div className="driver-avatar">MT</div>
-      <div className="active-ride-driver-info">
-        <div className="active-ride-name">Marcus T.</div>
-        <div className="active-ride-vehicle">Toyota Camry · TXA-4821</div>
-      </div>
-      <span className="time-badge">~2 min away</span>
-    </div>
-    <div className="active-ride-status-text">Driver en route to your pickup</div>
+const ActiveRideCard = ({ ride, driver, pickupCoords, dropoffCoords }) => {
+  const currentStep = STATUS_STEP_INDEX[ride?.status] ?? 0;
+  const initials    = driver
+    ? `${driver.first_name[0]}${driver.last_name[0]}`.toUpperCase()
+    : '?';
+  const driverName  = driver
+    ? `${driver.first_name} ${driver.last_name[0]}.`
+    : 'Awaiting driver';
+  const vehicleInfo = driver
+    ? `${driver.vehicle_model} · ${driver.license_plate}`
+    : '—';
 
-    <Suspense fallback={<div style={{ height: 280, background: 'var(--bg-secondary)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>Loading map…</div>}>
-      <RideMap pickupCoords={MOCK_PICKUP_COORDS} dropoffCoords={MOCK_DROPOFF_COORDS} />
-    </Suspense>
+  return (
+    <div className="active-ride-card">
+      <div className="active-ride-driver-row">
+        <div className="driver-avatar">{initials}</div>
+        <div className="active-ride-driver-info">
+          <div className="active-ride-name">{driverName}</div>
+          <div className="active-ride-vehicle">{vehicleInfo}</div>
+        </div>
+        {ride?.status && (
+          <span className={statusClass(ride.status)}>{capWords(ride.status)}</span>
+        )}
+      </div>
+      <div className="active-ride-status-text">
+        {STATUS_TEXT[ride?.status] || 'Awaiting update'}
+      </div>
 
-    <div className="ride-status-bar">
-      <div className="ride-status-label">RIDE STATUS</div>
-      <div className="ride-status-track">
-        {STATUS_STEPS.map((s, i) => (
-          <span key={s}>
-            <div className={`rs-step${i < 3 ? ' rs-done' : ''}`}>
-              <div className={`rs-dot${i >= 3 ? ' rs-dot-empty' : ''}`} />
-              <span>{s}</span>
-            </div>
-            {i < STATUS_STEPS.length - 1 && (
-              <div className={`rs-line${i < 2 ? ' rs-line-done' : ''}`} />
-            )}
-          </span>
-        ))}
+      <Suspense fallback={<div style={{ height: 280, background: 'var(--bg-secondary)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>Loading map…</div>}>
+        <RideMap
+          pickupCoords={pickupCoords   || FALLBACK_PICKUP}
+          dropoffCoords={dropoffCoords || FALLBACK_DROPOFF}
+        />
+      </Suspense>
+
+      <div className="ride-status-bar">
+        <div className="ride-status-label">RIDE STATUS</div>
+        <div className="ride-status-track">
+          {STATUS_STEPS.map((s, i) => (
+            <span key={s}>
+              <div className={`rs-step${i <= currentStep ? ' rs-done' : ''}`}>
+                <div className={`rs-dot${i > currentStep ? ' rs-dot-empty' : ''}`} />
+                <span>{s}</span>
+              </div>
+              {i < STATUS_STEPS.length - 1 && (
+                <div className={`rs-line${i < currentStep ? ' rs-line-done' : ''}`} />
+              )}
+            </span>
+          ))}
+        </div>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
 /* ── Rider Portal Page ─────────────────────────────────────────────────────── */
 const RiderPortalPage = ({ theme, onThemeToggle }) => {
@@ -139,6 +174,13 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
   const [aiLoading,     setAiLoading]     = useState(false);
   const [aiError,       setAiError]       = useState('');
   const [strataOpen,    setStrataOpen]    = useState(false);
+
+  const [activeRide,              setActiveRide]              = useState(null);
+  const [activeDriver,            setActiveDriver]            = useState(null);
+  const [activeRidePickupCoords,  setActiveRidePickupCoords]  = useState(null);
+  const [activeRideDropoffCoords, setActiveRideDropoffCoords] = useState(null);
+  const [loadingActive,           setLoadingActive]           = useState(false);
+  const [activeError,             setActiveError]             = useState('');
 
   const baseFare   = 2.50;
   const PER_MILE   = 1.75;
@@ -203,6 +245,7 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
       setDropoff('');
       setPickupCoords(null);
       setDropoffCoords(null);
+      setActiveTab('active');
     } catch (err) {
       console.error('Book ride failed:', err?.response?.status, err?.response?.data, err?.message);
       if (!err.response) {
@@ -214,6 +257,44 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
       setBooking(false);
     }
   };
+
+  /* fetch active ride when that tab is opened */
+  useEffect(() => {
+    if (activeTab !== 'active') return;
+    setLoadingActive(true);
+    setActiveError('');
+    (async () => {
+      try {
+        const res = await ridesApi.getAll({ statuses: 'requested,accepted,en_route,in_progress' });
+        const raw = res.data?.data ?? res.data ?? [];
+        const sorted = (Array.isArray(raw) ? raw : [])
+          .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+        const ride = sorted[0] || null;
+        setActiveRide(ride);
+        if (!ride) { setActiveDriver(null); return; }
+
+        if (ride.driver_id) {
+          try {
+            const dr = await driversApi.getById(ride.driver_id);
+            setActiveDriver(dr.data?.data ?? null);
+          } catch { setActiveDriver(null); }
+        } else {
+          setActiveDriver(null);
+        }
+
+        const [pc, dc] = await Promise.all([
+          geocode(ride.pickup_location),
+          geocode(ride.dropoff_location),
+        ]);
+        setActiveRidePickupCoords(pc);
+        setActiveRideDropoffCoords(dc);
+      } catch {
+        setActiveError('Failed to load active ride.');
+      } finally {
+        setLoadingActive(false);
+      }
+    })();
+  }, [activeTab]);
 
   /* fetch on tab change — always refresh so data stays current */
   useEffect(() => {
@@ -463,42 +544,107 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
           <div className="active-ride-left">
             <div className="page-header">
               <h1>Active Ride</h1>
-              <p>Your driver is on the way</p>
+              <p>
+                {loadingActive ? 'Loading…'
+                  : activeError ? activeError
+                  : activeRide  ? STATUS_TEXT[activeRide.status] || 'Ride in progress'
+                  : 'No active ride found'}
+              </p>
             </div>
-            <ActiveRideCard />
+
+            {loadingActive ? (
+              <div className="p-card" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                Loading your ride…
+              </div>
+            ) : activeError ? (
+              <div className="p-card" style={{ padding: '1.5rem', color: 'var(--danger)' }}>{activeError}</div>
+            ) : !activeRide ? (
+              <div className="p-card" style={{ padding: '2rem', textAlign: 'center' }}>
+                <div style={{ fontSize: '1rem', marginBottom: '0.5rem', fontWeight: 600 }}>No active ride</div>
+                <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '1.25rem' }}>
+                  You don't have a ride in progress right now.
+                </div>
+                <button className="btn-portal-cta" onClick={() => setActiveTab('book')}>
+                  Book a Ride
+                </button>
+              </div>
+            ) : (
+              <ActiveRideCard
+                ride={activeRide}
+                driver={activeDriver}
+                pickupCoords={activeRidePickupCoords}
+                dropoffCoords={activeRideDropoffCoords}
+              />
+            )}
           </div>
 
           <div className="active-ride-right">
             <div className="p-card active-ride-actions">
               <div className="section-label">Need help?</div>
               <div className="active-help-row">
-                <a href="tel:5125550201" className="btn-help" style={{ textDecoration: 'none', textAlign: 'center' }}>Contact Driver</a>
-                <button className="btn-help btn-help-danger" onClick={() => setShowCancel(true)}>Cancel Ride</button>
+                <a
+                  href={activeDriver?.phone_number ? `tel:${activeDriver.phone_number}` : '#'}
+                  className="btn-help"
+                  style={{ textDecoration: 'none', textAlign: 'center', opacity: activeDriver ? 1 : 0.5 }}
+                >
+                  Contact Driver
+                </a>
+                <button
+                  className="btn-help btn-help-danger"
+                  onClick={() => setShowCancel(true)}
+                  disabled={!activeRide}
+                >
+                  Cancel Ride
+                </button>
               </div>
               <p className="active-help-note">
                 Cancellations after driver acceptance may incur a $2.00 fee.
               </p>
             </div>
 
-            <div className="p-card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <div className="section-label">Ride details</div>
-              <div className="account-field" style={{ padding: '0.6rem 0' }}>
-                <span className="account-field-label">Driver</span>
-                <span className="account-field-value">Marcus T.</span>
+            {activeRide && (
+              <div className="p-card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div className="section-label">Ride details</div>
+                <div className="account-field" style={{ padding: '0.6rem 0' }}>
+                  <span className="account-field-label">Ride #</span>
+                  <span className="account-field-value">R{activeRide.ride_id}</span>
+                </div>
+                <div className="account-field" style={{ padding: '0.6rem 0' }}>
+                  <span className="account-field-label">Driver</span>
+                  <span className="account-field-value">
+                    {activeDriver
+                      ? `${activeDriver.first_name} ${activeDriver.last_name[0]}.`
+                      : 'Awaiting driver'}
+                  </span>
+                </div>
+                <div className="account-field" style={{ padding: '0.6rem 0' }}>
+                  <span className="account-field-label">Vehicle</span>
+                  <span className="account-field-value">
+                    {activeDriver
+                      ? `${activeDriver.vehicle_model} · ${activeDriver.license_plate}`
+                      : '—'}
+                  </span>
+                </div>
+                <div className="account-field" style={{ padding: '0.6rem 0' }}>
+                  <span className="account-field-label">Pickup</span>
+                  <span className="account-field-value" style={{ fontSize: '0.82rem' }}>
+                    {activeRide.pickup_location}
+                  </span>
+                </div>
+                <div className="account-field" style={{ padding: '0.6rem 0' }}>
+                  <span className="account-field-label">Dropoff</span>
+                  <span className="account-field-value" style={{ fontSize: '0.82rem' }}>
+                    {activeRide.dropoff_location}
+                  </span>
+                </div>
+                <div className="account-field" style={{ padding: '0.6rem 0', border: 'none' }}>
+                  <span className="account-field-label">Est. Fare</span>
+                  <span className="account-field-value" style={{ color: 'var(--magenta)' }}>
+                    {activeRide.fare ? `$${parseFloat(activeRide.fare).toFixed(2)}` : '—'}
+                  </span>
+                </div>
               </div>
-              <div className="account-field" style={{ padding: '0.6rem 0' }}>
-                <span className="account-field-label">Vehicle</span>
-                <span className="account-field-value">Toyota Camry · TXA-4821</span>
-              </div>
-              <div className="account-field" style={{ padding: '0.6rem 0' }}>
-                <span className="account-field-label">ETA</span>
-                <span className="account-field-value">~2 min away</span>
-              </div>
-              <div className="account-field" style={{ padding: '0.6rem 0', border: 'none' }}>
-                <span className="account-field-label">Est. Fare</span>
-                <span className="account-field-value" style={{ color: 'var(--magenta)' }}>$12.50</span>
-              </div>
-            </div>
+            )}
 
             <div className="rider-tips p-card">
               <div className="section-label">Safety tips</div>
@@ -532,7 +678,9 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
               <div className="p-card" style={{ background: 'var(--warning-bg, #fff8e1)', border: '1px solid var(--warning, #f59e0b)', marginBottom: '1rem' }}>
                 <div style={{ fontWeight: 600, marginBottom: '0.25rem' }}>⚠️ Cancellation fee: $2.00</div>
                 <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                  Your driver Marcus T. is ~2 min away. A $2.00 fee applies since the driver has already accepted.
+                  {activeDriver
+                  ? `Your driver ${activeDriver.first_name} ${activeDriver.last_name[0]}. has accepted. A $2.00 fee applies.`
+                  : 'A cancellation fee may apply depending on ride status.'}
                 </div>
               </div>
 
