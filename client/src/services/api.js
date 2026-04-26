@@ -17,6 +17,7 @@ export const setAuthToken = (token) => {
 
 export const ridersApi = {
   getAll:   (search = '') => api.get('/riders',     { params: search ? { search } : {} }),
+  getMe:    ()            => api.get('/riders/me'),
   getById:  (id)          => api.get(`/riders/${id}`),
   create:   (data)        => api.post('/riders',    data),
   update:   (id, data)    => api.put(`/riders/${id}`, data),

@@ -1,5 +1,6 @@
 const { Rider } = require('../models');
 const { Op } = require('sequelize');
+const { clerkClient } = require('@clerk/express');
 
 // GET /api/riders
 const getAllRiders = async (req, res) => {
@@ -21,6 +22,26 @@ const getAllRiders = async (req, res) => {
       order: [['created_at', 'DESC']],
     });
     res.json({ success: true, data: riders });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// GET /api/riders/me
+const getMyRider = async (req, res) => {
+  try {
+    const { userId } = req.auth;
+    let rider = await Rider.findOne({ where: { clerk_user_id: userId } });
+    if (!rider) {
+      const clerkUser = await clerkClient.users.getUser(userId);
+      const email = clerkUser.emailAddresses?.[0]?.emailAddress;
+      if (email) rider = await Rider.findOne({ where: { email } });
+      if (rider) await rider.update({ clerk_user_id: userId });
+    }
+    if (!rider) {
+      return res.status(404).json({ success: false, message: 'Rider profile not found' });
+    }
+    res.json({ success: true, data: rider });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -117,4 +138,4 @@ const deleteRider = async (req, res) => {
   }
 };
 
-module.exports = { getAllRiders, getRiderById, createRider, updateRider, deleteRider };
+module.exports = { getAllRiders, getMyRider, getRiderById, createRider, updateRider, deleteRider };

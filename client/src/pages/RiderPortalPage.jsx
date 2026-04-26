@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { useUser, useAuth } from '@clerk/react';
 import PortalNavbar from '../components/PortalNavbar';
-import { ridesApi, driversApi, paymentsApi, aiApi, setAuthToken } from '../services/api';
+import { ridersApi, ridesApi, driversApi, paymentsApi, aiApi, setAuthToken } from '../services/api';
 
 const RideMap = lazy(() => import('../components/RideMap'));
 
@@ -177,6 +177,7 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
   const [strataOpen,    setStrataOpen]    = useState(false);
 
   const [riderStats,              setRiderStats]              = useState(null);
+  const [riderProfile,            setRiderProfile]            = useState(null);
 
   const [activeRide,              setActiveRide]              = useState(null);
   const [activeDriver,            setActiveDriver]            = useState(null);
@@ -239,6 +240,12 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
           monthSpent,
         });
       })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    ridersApi.getMe()
+      .then((res) => setRiderProfile(res.data?.data ?? null))
       .catch(() => {});
   }, []);
 
@@ -922,12 +929,22 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
               <div className="account-field">
                 <span className="account-field-label">Phone</span>
                 <span className="account-field-value">
-                  {user?.phoneNumbers?.[0]?.phoneNumber || '—'}
+                  {riderProfile?.phone_number || user?.phoneNumbers?.[0]?.phoneNumber || '—'}
                 </span>
               </div>
               <div className="account-field">
                 <span className="account-field-label">Default Payment</span>
-                <span className="account-field-value">Credit Card</span>
+                <span className="account-field-value">
+                  {riderProfile?.default_payment_method
+                    ? riderProfile.default_payment_method.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+                    : '—'}
+                </span>
+              </div>
+              <div className="account-field">
+                <span className="account-field-label">Rider Rating</span>
+                <span className="account-field-value">
+                  {riderProfile?.rating ? `${parseFloat(riderProfile.rating).toFixed(2)} ★` : '—'}
+                </span>
               </div>
 
               <div className="section-label" style={{ marginTop: '1.5rem' }}>Ride Preferences</div>
