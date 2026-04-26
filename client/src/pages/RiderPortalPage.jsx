@@ -614,14 +614,12 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
                 </button>
               </div>
               {strataOpen && (
-                <div className="strata-chat-widget">
-                  <iframe
-                    src="https://strata.fyi/embed?workspace=mis372t"
-                    loading="lazy"
-                    allow="clipboard-write"
-                    style={{ width: '100%', height: '420px', border: 'none', borderRadius: '8px' }}
-                  />
-                </div>
+                <iframe
+                  src="https://strata.fyi/embed?workspace=mis372t"
+                  loading="lazy"
+                  allow="clipboard-write"
+                  style={{ width: '100%', height: '620px', border: 'none', borderRadius: '8px', display: 'block', marginTop: '0.5rem' }}
+                />
               )}
             </div>
           </div>
