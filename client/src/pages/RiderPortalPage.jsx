@@ -11,14 +11,16 @@ const searchAddresses = async (query) => {
   try {
     const res = await fetch(`https://photon.komoot.io/api/?${params}`);
     const data = await res.json();
-    return (data.features || []).map((f) => {
-      const p = f.properties;
-      const parts = [
-        p.housenumber && p.street ? `${p.housenumber} ${p.street}` : (p.name || p.street),
-        p.city, p.state, p.postcode, p.country,
-      ].filter(Boolean);
-      return { label: parts.join(', '), lat: f.geometry.coordinates[1], lon: f.geometry.coordinates[0] };
-    });
+    return (data.features || [])
+      .filter((f) => f.properties.country === 'United States')
+      .map((f) => {
+        const p = f.properties;
+        const parts = [
+          p.housenumber && p.street ? `${p.housenumber} ${p.street}` : (p.name || p.street),
+          p.city, p.state, p.postcode,
+        ].filter(Boolean);
+        return { label: parts.join(', '), lat: f.geometry.coordinates[1], lon: f.geometry.coordinates[0] };
+      });
   } catch { return []; }
 };
 
@@ -28,7 +30,7 @@ const isValidAddressInput = (s) => !ADDR_INVALID_RE.test(s);
 
 const geocode = async (address) => {
   if (!address.trim()) return null;
-  const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1`;
+  const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1&countrycodes=us`;
   try {
     const res = await fetch(url, { headers: { 'Accept-Language': 'en', 'User-Agent': 'RideFlow-App' } });
     const data = await res.json();
@@ -594,10 +596,10 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
                     <p className="book-hint book-hint-error">{dropoffInputError}</p>
                   )}
                   {pickup.trim() && !pickupInputError && pickupGeoFailed && (
-                    <p className="book-hint book-hint-error">Pickup not found. Try a more specific address.</p>
+                    <p className="book-hint book-hint-error">Pickup not found. RideFlow only operates in the United States.</p>
                   )}
                   {dropoff.trim() && !dropoffInputError && dropoffGeoFailed && (
-                    <p className="book-hint book-hint-error">Dropoff not found. Try a more specific address.</p>
+                    <p className="book-hint book-hint-error">Dropoff not found. RideFlow only operates in the United States.</p>
                   )}
                   {pickup.trim() && dropoff.trim() && !pickupInputError && !dropoffInputError && !pickupGeoFailed && !dropoffGeoFailed && (!pickupCoords || !dropoffCoords) && (
                     <p className="book-hint">Resolving addresses…</p>
