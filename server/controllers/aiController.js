@@ -26,7 +26,6 @@ const getDestinationSuggestions = async (req, res) => {
     });
 
     const raw = await response.text();
-    console.log(`Azure OpenAI [${response.status}] ${deployment}:`, raw.slice(0, 400));
 
     if (!response.ok) {
       return res.status(502).json({ success: false, message: 'AI service error', detail: raw.slice(0, 200) });

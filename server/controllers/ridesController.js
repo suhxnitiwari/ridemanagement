@@ -22,8 +22,17 @@ const getAllRides = async (req, res) => {
     const where = {};
 
     if (!admin) {
-      // Row-level: only show rides belonging to this Clerk user's rider record
-      const rider = await Rider.findOne({ where: { clerk_user_id: userId } });
+      let rider = await Rider.findOne({ where: { clerk_user_id: userId } });
+      if (!rider) {
+        try {
+          const clerkUser = await clerkClient.users.getUser(userId);
+          const email = clerkUser.emailAddresses?.[0]?.emailAddress;
+          if (email) {
+            rider = await Rider.findOne({ where: { email } });
+            if (rider) await rider.update({ clerk_user_id: userId });
+          }
+        } catch {}
+      }
       if (!rider) return res.json({ success: true, data: [] });
       where.rider_id = rider.rider_id;
     }

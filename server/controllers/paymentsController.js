@@ -69,14 +69,33 @@ const getPaymentById = async (req, res) => {
   }
 };
 
-// POST /api/payments  (admin only — enforced at route level)
+// POST /api/payments
 const createPayment = async (req, res) => {
   try {
-    const { ride_id, rider_id, amount, payment_method, status } = req.body;
+    const { ride_id, amount, payment_method, status, card_last_four } = req.body;
     if (!ride_id || amount === undefined) {
       return res.status(400).json({ success: false, message: 'ride_id and amount are required' });
     }
-    const payment = await Payment.create({ ride_id, rider_id, amount, payment_method, status });
+
+    // Auto-resolve rider_id from the authenticated user so payments always link correctly
+    let { rider_id } = req.body;
+    if (!rider_id) {
+      const userId = req.auth?.userId;
+      let rider = await Rider.findOne({ where: { clerk_user_id: userId } });
+      if (!rider) {
+        try {
+          const clerkUser = await clerkClient.users.getUser(userId);
+          const email = clerkUser.emailAddresses?.[0]?.emailAddress;
+          if (email) {
+            rider = await Rider.findOne({ where: { email } });
+            if (rider) await rider.update({ clerk_user_id: userId });
+          }
+        } catch {}
+      }
+      rider_id = rider?.rider_id ?? null;
+    }
+
+    const payment = await Payment.create({ ride_id, rider_id, amount, payment_method, status, card_last_four });
     res.status(201).json({ success: true, data: payment });
   } catch (error) {
     if (error.name === 'SequelizeValidationError') {

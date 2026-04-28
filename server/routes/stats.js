@@ -1,6 +1,7 @@
 const express = require('express');
 const router  = express.Router();
 const { Rider, Driver, Ride } = require('../models');
+const { Op } = require('sequelize');
 
 router.get('/', async (_req, res) => {
   try {
@@ -8,7 +9,7 @@ router.get('/', async (_req, res) => {
       Ride.count(),
       Ride.count({ where: { status: 'completed' } }),
       Rider.count({ where: { active: true } }),
-      Driver.count(),
+      Driver.count({ where: { status: { [Op.ne]: 'inactive' } } }),
       Driver.findOne({ order: [['rating', 'DESC NULLS LAST']] }),
     ]);
 

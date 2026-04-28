@@ -95,21 +95,21 @@ const DriverPortalPage = ({ theme, onThemeToggle }) => {
 
   // ── Tab-triggered fetches ──────────────────────────────────────────────────
   useEffect(() => {
-    if (activeTab === 'find' && availableRides.length === 0) {
+    if (activeTab === 'find') {
       setLoadingRides(true);
       ridesApi.getAll({ status: 'requested' })
         .then((res) => setAvailableRides(res.data.data ?? []))
         .catch(() => {})
         .finally(() => setLoadingRides(false));
     }
-    if (activeTab === 'my-rides' && myRides.length === 0) {
+    if (activeTab === 'my-rides') {
       setLoadingRides(true);
       ridesApi.getAll()
         .then((res) => setMyRides(res.data.data ?? []))
         .catch(() => {})
         .finally(() => setLoadingRides(false));
     }
-    if (activeTab === 'earnings' && payments.length === 0) {
+    if (activeTab === 'earnings') {
       setLoadingPayments(true);
       paymentsApi.getAll()
         .then((res) => setPayments(res.data.data ?? []))
@@ -128,9 +128,10 @@ const DriverPortalPage = ({ theme, onThemeToggle }) => {
     const now = new Date();
     const startOf = (d) => { const c = new Date(d); c.setHours(0,0,0,0); return c; };
     const todayStart = startOf(now);
-    const weekStart  = startOf(new Date(now.setDate(now.getDate() - new Date().getDay())));
-    const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
-    const yearStart  = new Date(new Date().getFullYear(), 0, 1);
+    const weekAnchor = new Date(now); weekAnchor.setDate(now.getDate() - now.getDay());
+    const weekStart  = startOf(weekAnchor);
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const yearStart  = new Date(now.getFullYear(), 0, 1);
 
     const sum = (rides) => rides.reduce((s, r) => s + parseFloat(r.fare), 0);
 

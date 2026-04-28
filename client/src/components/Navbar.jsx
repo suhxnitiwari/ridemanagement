@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { useAuth, useUser, UserButton, SignInButton } from '@clerk/react';
+import { useAuth, UserButton, SignInButton } from '@clerk/react';
 
 const ALL_LINKS = [
   { label: 'Riders',  to: '/rider',  roles: ['rider',  'manager'] },
@@ -10,9 +10,7 @@ const ALL_LINKS = [
 const Navbar = ({ theme, onThemeToggle, showThemeToggle, showCta }) => {
   const location = useLocation();
   const { isSignedIn } = useAuth();
-  const { user } = useUser();
-  const role = user?.publicMetadata?.role;
-  const navLinks = ALL_LINKS.filter((l) => !role || l.roles.includes(role));
+  const navLinks = ALL_LINKS;
   const isLight = theme === 'light';
 
   return (

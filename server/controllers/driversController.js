@@ -87,6 +87,18 @@ const updateDriver = async (req, res) => {
     const driver = await Driver.findByPk(req.params.id);
     if (!driver) return res.status(404).json({ success: false, message: 'Driver not found' });
 
+    // Ownership check: only the driver themselves or an admin can update
+    const { userId } = req.auth;
+    const clerkUser = await clerkClient.users.getUser(userId);
+    const role = clerkUser.publicMetadata?.role;
+    const isAdmin = role === 'admin' || role === 'manager';
+    if (!isAdmin) {
+      const self = await Driver.findOne({ where: { clerk_user_id: userId } });
+      if (!self || self.driver_id !== driver.driver_id) {
+        return res.status(403).json({ success: false, message: 'Access denied' });
+      }
+    }
+
     const { first_name, last_name, email, phone_number, license_plate, vehicle_model, status, rating } = req.body;
 
     await driver.update({
@@ -127,23 +139,33 @@ const deleteDriver = async (req, res) => {
 // GET /api/drivers/stats
 const getDriverStats = async (req, res) => {
   try {
-    const drivers = await Driver.findAll();
-    const stats = await Promise.all(drivers.map(async (d) => {
-      const rides = await Ride.findAll({ where: { driver_id: d.driver_id } });
+    const [drivers, allRides] = await Promise.all([
+      Driver.findAll(),
+      Ride.findAll({ attributes: ['driver_id', 'status', 'fare'] }),
+    ]);
+
+    const ridesByDriver = {};
+    for (const r of allRides) {
+      if (!ridesByDriver[r.driver_id]) ridesByDriver[r.driver_id] = [];
+      ridesByDriver[r.driver_id].push(r);
+    }
+
+    const stats = drivers.map((d) => {
+      const rides = ridesByDriver[d.driver_id] || [];
       const completed = rides.filter((r) => r.status === 'completed');
       const revenue = completed.reduce((sum, r) => sum + (parseFloat(r.fare) || 0), 0);
       return {
-        driver_id:      d.driver_id,
-        name:           `${d.first_name} ${d.last_name}`,
-        vehicle:        d.vehicle_model,
-        phone_number:   d.phone_number,
-        status:         d.status,
-        rating:         d.rating,
-        total_rides:    rides.length,
+        driver_id:       d.driver_id,
+        name:            `${d.first_name} ${d.last_name}`,
+        vehicle:         d.vehicle_model,
+        phone_number:    d.phone_number,
+        status:          d.status,
+        rating:          d.rating,
+        total_rides:     rides.length,
         completed_rides: completed.length,
-        total_revenue:  parseFloat(revenue.toFixed(2)),
+        total_revenue:   parseFloat(revenue.toFixed(2)),
       };
-    }));
+    });
     stats.sort((a, b) => b.total_revenue - a.total_revenue);
     res.json({ success: true, data: stats });
   } catch (error) {

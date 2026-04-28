@@ -101,6 +101,18 @@ const updateRider = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Rider not found' });
     }
 
+    // Ownership check: only the rider themselves or an admin can update
+    const { userId } = req.auth;
+    const clerkUser  = await clerkClient.users.getUser(userId);
+    const role       = clerkUser.publicMetadata?.role;
+    const isAdmin    = role === 'admin' || role === 'manager';
+    if (!isAdmin) {
+      const self = await Rider.findOne({ where: { clerk_user_id: userId } });
+      if (!self || self.rider_id !== rider.rider_id) {
+        return res.status(403).json({ success: false, message: 'Access denied' });
+      }
+    }
+
     const { first_name, last_name, email, phone_number, default_payment_method, rating } = req.body;
 
     await rider.update({

@@ -400,7 +400,6 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
   return (
     <div className="portal-shell">
       {(() => {
-        const { user } = useUser();
         const userInitials = user?.firstName && user?.lastName
           ? `${user.firstName[0]}${user.lastName[0]}`.toUpperCase()
           : user?.firstName
