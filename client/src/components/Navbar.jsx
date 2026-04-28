@@ -12,7 +12,8 @@ const Navbar = ({ theme, onThemeToggle, showThemeToggle, showCta }) => {
   const { isSignedIn } = useAuth();
   const { user } = useUser();
   const role = user?.publicMetadata?.role;
-  const navLinks = ALL_LINKS.filter((link) => role && link.roles.includes(role));
+  const isHome = location.pathname === '/';
+  const navLinks = isHome ? ALL_LINKS : ALL_LINKS.filter((link) => role && link.roles.includes(role));
   const isLight = theme === 'light';
 
   return (
