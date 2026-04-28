@@ -158,6 +158,8 @@ const getDriverStats = async (req, res) => {
         driver_id:       d.driver_id,
         name:            `${d.first_name} ${d.last_name}`,
         vehicle:         d.vehicle_model,
+        vehicle_color:   d.vehicle_color,
+        license_plate:   d.license_plate,
         phone_number:    d.phone_number,
         status:          d.status,
         rating:          d.rating,

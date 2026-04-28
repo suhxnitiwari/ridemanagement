@@ -302,7 +302,13 @@ const AdminPage = ({ theme, onThemeToggle }) => {
                   {driverStats.map((d) => (
                     <tr key={d.driver_id}>
                       <td><strong>{d.name}</strong></td>
-                      <td>{d.vehicle}</td>
+                      <td>
+                        <div>{d.vehicle}</div>
+                        <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                          {d.vehicle_color && <span>{d.vehicle_color} · </span>}
+                          <span>{d.license_plate}</span>
+                        </div>
+                      </td>
                       <td>
                         {d.phone_number
                           ? <a href={`tel:${d.phone_number.replace(/\D/g, '')}`} style={{ color: 'var(--magenta)', textDecoration: 'none' }}>{d.phone_number}</a>

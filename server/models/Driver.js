@@ -36,6 +36,10 @@ const Driver = sequelize.define('Driver', {
     type: DataTypes.STRING,
     allowNull: false,
   },
+  vehicle_color: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
   status: {
     type: DataTypes.STRING,
     allowNull: false,
