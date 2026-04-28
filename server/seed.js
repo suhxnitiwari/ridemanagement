@@ -42,17 +42,22 @@ const riderData = [
 
 const driverData = [
   // ── Clerk test account ────────────────────────────────────────────────────
-  { first_name: 'Driver',  last_name: 'Test',     email: 'driver+clerk_test@example.com', phone_number: '(555) 200-3000', license_plate: 'TXB-9922', vehicle_model: 'Toyota Camry 2023', status: 'available', rating: 4.80 },
-  { first_name: 'Marcus',  last_name: 'Lee',      email: 'marcus.lee@rideflow.app',    phone_number: '(512) 555-0201', license_plate: 'TXA-4821', vehicle_model: 'Toyota Camry',   status: 'on_ride',   rating: 4.90 },
-  { first_name: 'Priya',   last_name: 'Nair',     email: 'priya.nair@rideflow.app',    phone_number: '(512) 555-0202', license_plate: 'TXB-2234', vehicle_model: 'Honda Accord',   status: 'available', rating: 4.80 },
-  { first_name: 'Jordan',  last_name: 'Hall',     email: 'jordan.hall@rideflow.app',   phone_number: '(512) 555-0203', license_plate: 'TXC-9910', vehicle_model: 'Ford Fusion',    status: 'available', rating: 4.70 },
-  { first_name: 'Chris',   last_name: 'Obi',      email: 'chris.obi@rideflow.app',     phone_number: '(512) 555-0204', license_plate: 'TXD-6678', vehicle_model: 'Chevy Malibu',   status: 'offline',   rating: 4.60 },
-  { first_name: 'Yara',    last_name: 'Gonzalez', email: 'yara.g@rideflow.app',        phone_number: '(512) 555-0205', license_plate: 'TXE-3312', vehicle_model: 'Nissan Altima',  status: 'available', rating: 4.85 },
-  { first_name: 'Damon',   last_name: 'Rivers',   email: 'damon.rivers@rideflow.app',  phone_number: '(512) 555-0206', license_plate: 'TXF-7743', vehicle_model: 'Hyundai Sonata', status: 'available', rating: 4.75 },
-  { first_name: 'Aisha',   last_name: 'Monroe',   email: 'aisha.monroe@rideflow.app',  phone_number: '(512) 555-0207', license_plate: 'TXG-1195', vehicle_model: 'Kia Optima',     status: 'on_ride',   rating: 4.95 },
-  { first_name: 'Ben',     last_name: 'Carter',   email: 'ben.carter@rideflow.app',    phone_number: '(512) 555-0208', license_plate: 'TXH-8856', vehicle_model: 'Toyota Corolla', status: 'offline',   rating: 4.55 },
-  { first_name: 'Layla',   last_name: 'Hassan',   email: 'layla.hassan@rideflow.app',  phone_number: '(512) 555-0209', license_plate: 'TXI-3370', vehicle_model: 'Honda Civic',    status: 'available', rating: 4.78 },
-  { first_name: 'Derek',   last_name: 'Nguyen',   email: 'derek.nguyen@rideflow.app',  phone_number: '(512) 555-0210', license_plate: 'TXJ-6612', vehicle_model: 'Mazda CX-5',     status: 'available', rating: 4.83 },
+  // ── Clerk test account ────────────────────────────────────────────────────
+  { first_name: 'Driver',  last_name: 'Test',     email: 'driver+clerk_test@example.com',  phone_number: '(555) 200-3000', license_plate: 'TXB-9922', vehicle_model: 'Toyota Camry 2023',  status: 'available', rating: 4.80 },
+  // ── Full-time drivers — 5 male ────────────────────────────────────────────
+  { first_name: 'Marcus',  last_name: 'Lee',      email: 'marcus.lee@rideflow.app',         phone_number: '(512) 555-0201', license_plate: 'TXA-4821', vehicle_model: 'Toyota Camry 2022',  status: 'on_ride',   rating: 4.90 },
+  { first_name: 'Chris',   last_name: 'Obi',      email: 'chris.obi@rideflow.app',          phone_number: '(512) 555-0204', license_plate: 'TXD-6678', vehicle_model: 'Chevy Malibu 2021',  status: 'offline',   rating: 4.60 },
+  { first_name: 'Damon',   last_name: 'Rivers',   email: 'damon.rivers@rideflow.app',       phone_number: '(512) 555-0206', license_plate: 'TXF-7743', vehicle_model: 'Hyundai Sonata 2023',status: 'available', rating: 4.75 },
+  { first_name: 'Ben',     last_name: 'Carter',   email: 'ben.carter@rideflow.app',         phone_number: '(512) 555-0208', license_plate: 'TXH-8856', vehicle_model: 'Toyota Corolla 2022',status: 'offline',   rating: 4.55 },
+  { first_name: 'Derek',   last_name: 'Nguyen',   email: 'derek.nguyen@rideflow.app',       phone_number: '(512) 555-0210', license_plate: 'TXJ-6612', vehicle_model: 'Mazda CX-5 2023',    status: 'available', rating: 4.83 },
+  // ── Full-time drivers — 5 female ──────────────────────────────────────────
+  { first_name: 'Priya',   last_name: 'Nair',     email: 'priya.nair@rideflow.app',         phone_number: '(512) 555-0202', license_plate: 'TXB-2234', vehicle_model: 'Honda Accord 2022',  status: 'available', rating: 4.80 },
+  { first_name: 'Yara',    last_name: 'Gonzalez', email: 'yara.g@rideflow.app',             phone_number: '(512) 555-0205', license_plate: 'TXE-3312', vehicle_model: 'Nissan Altima 2021', status: 'available', rating: 4.85 },
+  { first_name: 'Aisha',   last_name: 'Monroe',   email: 'aisha.monroe@rideflow.app',       phone_number: '(512) 555-0207', license_plate: 'TXG-1195', vehicle_model: 'Kia Stinger 2022',   status: 'on_ride',   rating: 4.95 },
+  { first_name: 'Layla',   last_name: 'Hassan',   email: 'layla.hassan@rideflow.app',       phone_number: '(512) 555-0209', license_plate: 'TXI-3370', vehicle_model: 'Honda Civic 2023',   status: 'available', rating: 4.78 },
+  { first_name: 'Nadia',   last_name: 'Williams', email: 'nadia.williams@rideflow.app',     phone_number: '(512) 555-0212', license_plate: 'TXK-5544', vehicle_model: 'Honda Pilot 2022',   status: 'available', rating: 4.72 },
+  // ── Non-full-time (test / personal accounts) ──────────────────────────────
+  { first_name: 'Suhani',  last_name: 'Tiwari',   email: 'suhani.driver@rideflow.app',      phone_number: '(512) 555-0211', license_plate: 'TXS-2026', vehicle_model: 'Tesla Model 3 2024', status: 'available', rating: 5.00 },
 ];
 
 const pickups = [
