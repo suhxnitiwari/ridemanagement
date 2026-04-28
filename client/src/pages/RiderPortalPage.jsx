@@ -84,6 +84,14 @@ const FALLBACK_DROPOFF = [30.2672, -97.7431];
 const capWords = (s) =>
   s.split('_').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 
+const CARD_METHODS = new Set(['credit_card', 'debit_card']);
+const formatMethod = (method, lastFour) => {
+  if (lastFour && CARD_METHODS.has(method)) {
+    return `${capWords(method)} ···· ${lastFour}`;
+  }
+  return capWords(method);
+};
+
 const statusClass = (s) => `status-badge status-${s}`;
 
 /* ── Active Ride Card ──────────────────────────────────────────────────────── */
@@ -920,7 +928,7 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
                       </td>
                       <td><span className="ride-id-link">R{p.ride_id}</span></td>
                       <td><strong>${parseFloat(p.amount).toFixed(2)}</strong></td>
-                      <td>{capWords(p.payment_method)}</td>
+                      <td>{formatMethod(p.payment_method, p.card_last_four)}</td>
                       <td>
                         <span className={statusClass(p.status)}>
                           {capWords(p.status)}

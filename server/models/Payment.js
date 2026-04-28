@@ -36,6 +36,10 @@ const Payment = sequelize.define('Payment', {
       isIn: [['pending', 'completed', 'refunded']],
     },
   },
+  card_last_four: {
+    type: DataTypes.STRING(4),
+    allowNull: true,
+  },
 }, {
   tableName: 'payments',
   underscored: true,

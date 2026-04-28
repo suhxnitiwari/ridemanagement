@@ -77,6 +77,10 @@ const dropoffs = [
 
 const PAYMENT_METHODS = ['credit_card', 'debit_card', 'apple_pay', 'google_pay', 'paypal'];
 
+// One consistent card-last-4 per rider (index matches riderData order)
+const RIDER_CARD_LAST_FOUR = ['4247', '8831', '1592', '7734', '3316', '9981', '4452', '7823', '2291', '5543', '8876', '3317', '6694', '1123', '9988'];
+const CARD_METHODS = new Set(['credit_card', 'debit_card']);
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 /** Random date `daysAgo` days in the past between 6 am and 11 pm. */
@@ -255,15 +259,22 @@ const seed = async () => {
     const completed  = createdRides.filter((r) => r.status === 'completed');
     const cancelled  = createdRides.filter((r) => r.status === 'cancelled');
 
+    const riderIndexMap = {};
+    riders.forEach((r, i) => { riderIndexMap[r.rider_id] = i; });
+
     let payIdx = 0;
     for (const ride of completed) {
-      const payDate = new Date(new Date(ride.createdAt).getTime() + (15 + Math.floor(Math.random() * 25)) * 60 * 1000);
+      const payDate      = new Date(new Date(ride.createdAt).getTime() + (15 + Math.floor(Math.random() * 25)) * 60 * 1000);
+      const method       = PAYMENT_METHODS[payIdx % PAYMENT_METHODS.length];
+      const riderIdx     = riderIndexMap[ride.rider_id] ?? 0;
+      const cardLastFour = CARD_METHODS.has(method) ? RIDER_CARD_LAST_FOUR[riderIdx % RIDER_CARD_LAST_FOUR.length] : null;
       await Payment.create({
         ride_id:        ride.ride_id,
         rider_id:       ride.rider_id,
         amount:         parseFloat(ride.fare),
-        payment_method: PAYMENT_METHODS[payIdx % PAYMENT_METHODS.length],
+        payment_method: method,
         status:         'completed',
+        card_last_four: cardLastFour,
         createdAt:      payDate,
       });
       payIdx++;
@@ -272,15 +283,18 @@ const seed = async () => {
 
     // $2.00 cancellation fee for every cancelled ride
     for (const ride of cancelled) {
-      const feeDate = new Date(new Date(ride.createdAt).getTime() + 5 * 60 * 1000);
-      // Find the rider's default payment method
-      const rider = riders.find((r) => r.rider_id === ride.rider_id);
+      const feeDate      = new Date(new Date(ride.createdAt).getTime() + 5 * 60 * 1000);
+      const rider        = riders.find((r) => r.rider_id === ride.rider_id);
+      const method       = rider?.default_payment_method || 'credit_card';
+      const riderIdx     = riderIndexMap[ride.rider_id] ?? 0;
+      const cardLastFour = CARD_METHODS.has(method) ? RIDER_CARD_LAST_FOUR[riderIdx % RIDER_CARD_LAST_FOUR.length] : null;
       await Payment.create({
         ride_id:        ride.ride_id,
         rider_id:       ride.rider_id,
         amount:         2.00,
-        payment_method: rider?.default_payment_method || 'credit_card',
+        payment_method: method,
         status:         'completed',
+        card_last_four: cardLastFour,
         createdAt:      feeDate,
       });
     }
