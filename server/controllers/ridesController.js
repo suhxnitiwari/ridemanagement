@@ -80,8 +80,18 @@ const createRide = async (req, res) => {
       return res.status(400).json({ success: false, message: 'pickup_location and dropoff_location are required' });
     }
 
-    // Auto-link rider_id from the logged-in user's Clerk ID
-    const rider = await Rider.findOne({ where: { clerk_user_id: userId } });
+    // Auto-link rider_id — try clerk_user_id first, fall back to email
+    let rider = await Rider.findOne({ where: { clerk_user_id: userId } });
+    if (!rider) {
+      try {
+        const clerkUser = await clerkClient.users.getUser(userId);
+        const email = clerkUser.emailAddresses?.[0]?.emailAddress;
+        if (email) {
+          rider = await Rider.findOne({ where: { email } });
+          if (rider) await rider.update({ clerk_user_id: userId });
+        }
+      } catch {}
+    }
 
     const ride = await Ride.create({
       rider_id: rider?.rider_id || null,
@@ -111,7 +121,17 @@ const updateRide = async (req, res) => {
     if (!ride) return res.status(404).json({ success: false, message: 'Ride not found' });
 
     if (!admin) {
-      const rider = await Rider.findOne({ where: { clerk_user_id: userId } });
+      let rider = await Rider.findOne({ where: { clerk_user_id: userId } });
+      if (!rider) {
+        try {
+          const clerkUser = await clerkClient.users.getUser(userId);
+          const email = clerkUser.emailAddresses?.[0]?.emailAddress;
+          if (email) {
+            rider = await Rider.findOne({ where: { email } });
+            if (rider) await rider.update({ clerk_user_id: userId });
+          }
+        } catch {}
+      }
       if (!rider || ride.rider_id !== rider.rider_id) {
         return res.status(403).json({ success: false, message: 'Access denied' });
       }

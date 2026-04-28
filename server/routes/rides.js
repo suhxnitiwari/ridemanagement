@@ -6,7 +6,7 @@ const { requireAuth, requireAdmin, requireDriver, requireRider } = require('../m
 router.get('/',      requireAuth,   getAllRides);
 router.get('/:id',   requireAuth,   getRideById);
 router.post('/',     requireRider,  createRide);
-router.put('/:id',        requireDriver, updateRide);
+router.put('/:id',        requireAuth,   updateRide);
 router.patch('/:id/status', requireDriver, updateRideStatus);
 router.delete('/:id',     requireAdmin,  deleteRide);
 

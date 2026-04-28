@@ -236,11 +236,57 @@ const seed = async () => {
       };
     });
 
-    const allRideRows = [...keyRideRows, ...generalRideRows];
+    // ── Block 3: Recent completed rides for driver+clerk_test ─────────────────
+    // Gives the driver dashboard real earnings for today, this week, this month
+    const driverTest = drivers[0]; // driver+clerk_test is index 0
+    const nonKeyRiders = riders.slice(KEY_RIDER_COUNT);
+    const driverRecentRides = [
+      // today
+      { daysAgo: 0, hour: 8,  status: 'completed', fare: makeFare() },
+      { daysAgo: 0, hour: 14, status: 'completed', fare: makeFare() },
+      { daysAgo: 0, hour: 18, status: 'in_progress', fare: makeFare() },
+      // this week
+      { daysAgo: 1, hour: 10, status: 'completed', fare: makeFare() },
+      { daysAgo: 2, hour: 15, status: 'completed', fare: makeFare() },
+      { daysAgo: 3, hour: 9,  status: 'completed', fare: makeFare() },
+      { daysAgo: 4, hour: 17, status: 'completed', fare: makeFare() },
+      // earlier this month
+      { daysAgo: 8,  hour: 11, status: 'completed', fare: makeFare() },
+      { daysAgo: 12, hour: 13, status: 'completed', fare: makeFare() },
+      { daysAgo: 18, hour: 16, status: 'completed', fare: makeFare() },
+    ].map((r, i) => ({
+      rider_id:         nonKeyRiders[i % nonKeyRiders.length].rider_id,
+      driver_id:        driverTest.driver_id,
+      pickup_location:  pickups[(i + 2) % pickups.length],
+      dropoff_location: dropoffs[(i + 4) % dropoffs.length],
+      status:           r.status,
+      fare:             r.fare,
+      createdAt:        makeDate(r.daysAgo, r.hour),
+    }));
+
+    // ── Block 4: 6 open requested rides for "Find Rides" ──────────────────────
+    const findRidesPool = [
+      { pickup: 'UT Austin — Jester Hall',    dropoff: 'Austin-Bergstrom Airport',    fare: makeFare() },
+      { pickup: 'Downtown Austin — 6th St',   dropoff: 'South Congress Ave',          fare: makeFare() },
+      { pickup: 'Rainey Street',              dropoff: 'The Domain',                  fare: makeFare() },
+      { pickup: 'Barton Springs Rd',          dropoff: 'Mueller Neighborhood',        fare: makeFare() },
+      { pickup: 'East 6th St',               dropoff: 'Round Rock — IKEA',           fare: makeFare() },
+      { pickup: 'Hyde Park',                  dropoff: 'Austin Community College',    fare: makeFare() },
+    ].map((r, i) => ({
+      rider_id:         nonKeyRiders[(i + 3) % nonKeyRiders.length].rider_id,
+      driver_id:        null,
+      pickup_location:  r.pickup,
+      dropoff_location: r.dropoff,
+      status:           'requested',
+      fare:             r.fare,
+      createdAt:        makeDate(0, 7 + i),
+    }));
+
+    const allRideRows = [...keyRideRows, ...generalRideRows, ...driverRecentRides, ...findRidesPool];
     const TOTAL = allRideRows.length;
 
     // ── Insert rides ──────────────────────────────────────────────────────────
-    console.log(`\nInserting ${TOTAL} rides (35 key-account + 40 general)…`);
+    console.log(`\nInserting ${TOTAL} rides (35 key + 40 general + 10 driver-recent + 6 find-rides)…`);
     const createdRides = [];
     for (const row of allRideRows) {
       const ride = await Ride.create(row);
