@@ -2,6 +2,121 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { statsApi } from '../services/api';
 
+const FAKE_DRIVERS = [
+  { initials: 'MJ', name: 'Marcus J.',  plate: 'TXS-4891', rating: '4.97' },
+  { initials: 'PR', name: 'Priya R.',   plate: 'ATX-7234', rating: '5.00' },
+  { initials: 'DC', name: 'Devon C.',   plate: 'TX-8821',  rating: '4.88' },
+  { initials: 'SG', name: 'Sofia G.',   plate: 'TXS-3356', rating: '4.95' },
+  { initials: 'RB', name: 'Riley B.',   plate: 'ATX-6612', rating: '4.92' },
+];
+
+const CARD_PHASES = [
+  { badge: 'Finding driver…', badgeCls: 'badge-searching', steps: -1, carPct: 0  },
+  { badge: 'Driver matched!', badgeCls: 'badge-matched',   steps: 1,  carPct: 12 },
+  { badge: 'En Route  →',     badgeCls: 'badge-enroute',   steps: 2,  carPct: 52 },
+  { badge: 'Arrived! ✓',      badgeCls: 'badge-arrived',   steps: 3,  carPct: 88 },
+];
+
+const CARD_STEPS = ['Requested', 'Accepted', 'En Route', 'In Progress', 'Done'];
+
+const HeroCard = () => {
+  const [driverIdx, setDriverIdx] = useState(0);
+  const [phase, setPhase] = useState(0);
+  const [visible, setVisible] = useState(true);
+
+  useEffect(() => {
+    const DURATIONS = [1800, 1500, 2200, 2000];
+    let ph = 0;
+    let di = 0;
+    let timer;
+
+    const advance = () => {
+      ph = (ph + 1) % 4;
+      if (ph === 0) {
+        setVisible(false);
+        timer = setTimeout(() => {
+          di = (di + 1) % FAKE_DRIVERS.length;
+          setDriverIdx(di);
+          setPhase(0);
+          setVisible(true);
+          timer = setTimeout(advance, DURATIONS[0]);
+        }, 450);
+      } else {
+        setPhase(ph);
+        timer = setTimeout(advance, DURATIONS[ph]);
+      }
+    };
+
+    timer = setTimeout(advance, DURATIONS[0]);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const driver = FAKE_DRIVERS[driverIdx];
+  const p = CARD_PHASES[phase];
+
+  return (
+    <div className={`driver-card hero-anim-card${!visible ? ' hero-card-fade' : ''}`}>
+      <div className="driver-card-header">
+        <div className={`driver-avatar${phase === 0 ? ' avatar-searching' : ''}`}>
+          {phase === 0 ? '?' : driver.initials}
+        </div>
+        <div className="driver-info">
+          <div className="driver-name">
+            {phase === 0
+              ? <span className="hero-searching-text">Finding your driver…</span>
+              : `${driver.name} · ${driver.plate}`}
+          </div>
+          <div className="driver-stars">
+            {phase > 0
+              ? <>★★★★★ <span>{driver.rating}</span></>
+              : <span className="hero-dots-anim">● ● ●</span>}
+          </div>
+        </div>
+        <span className={`arrived-badge ${p.badgeCls}`}>{p.badge}</span>
+      </div>
+
+      <div className="map-placeholder">
+        <div className="map-grid" />
+        <div className="map-route">
+          <div className="map-dot map-dot-you">
+            <span className="map-dot-label">You</span>
+          </div>
+          <div className="map-line" />
+          <div className="map-dot map-dot-dest">
+            <span className="map-dot-label">Destination</span>
+          </div>
+        </div>
+        {phase >= 1 && (
+          <div
+            className={`map-car-dot${phase === 3 ? ' map-car-arrived' : ''}`}
+            style={{ left: `${p.carPct}%` }}
+          />
+        )}
+      </div>
+
+      <div className="ride-status-bar">
+        <div className="ride-status-label">RIDE STATUS</div>
+        <div className="ride-status-track">
+          {CARD_STEPS.flatMap((label, i) => {
+            const done = i <= p.steps;
+            const items = [];
+            if (i > 0) items.push(
+              <div key={`L${i}`} className={`rs-line${done ? ' rs-line-done' : ''}`} />
+            );
+            items.push(
+              <div key={`S${i}`} className={`rs-step${done ? ' rs-done' : ''}`}>
+                <div className={`rs-dot${!done ? ' rs-dot-empty' : ''}`} />
+                <span>{label}</span>
+              </div>
+            );
+            return items;
+          })}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const REVIEWS = [
   {
     stars: '★★★★★',
@@ -78,8 +193,6 @@ const HomePage = () => {
       .catch(() => {});
   }, []);
 
-  const driver = stats?.featured_driver;
-
   return (
     <div className="landing">
       {/* ── Hero ─────────────────────────────────────────────── */}
@@ -121,61 +234,7 @@ const HomePage = () => {
         </div>
 
         <div className="hero-right">
-          <div className="driver-card">
-            <div className="driver-card-header">
-              <div className="driver-avatar">
-                {driver ? driver.initials : '—'}
-              </div>
-              <div className="driver-info">
-                <div className="driver-name">
-                  {driver ? `${driver.name} · ${driver.license_plate}` : 'Loading…'}
-                </div>
-                <div className="driver-stars">
-                  {'★'.repeat(Math.round(parseFloat(driver?.rating ?? 5)))}{' '}
-                  <span>{driver?.rating ?? '—'}</span>
-                </div>
-              </div>
-              <span className="arrived-badge">Arrived!</span>
-            </div>
-
-            <div className="map-placeholder">
-              <div className="map-grid" />
-              <div className="map-route">
-                <div className="map-dot map-dot-you">
-                  <span className="map-dot-label">You</span>
-                </div>
-                <div className="map-line" />
-                <div className="map-dot map-dot-dest">
-                  <span className="map-dot-label">Destination</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="ride-status-bar">
-              <div className="ride-status-label">RIDE STATUS</div>
-              <div className="ride-status-track">
-                <div className="rs-step rs-done">
-                  <div className="rs-dot" /><span>Requested</span>
-                </div>
-                <div className="rs-line rs-line-done" />
-                <div className="rs-step rs-done">
-                  <div className="rs-dot" /><span>Accepted</span>
-                </div>
-                <div className="rs-line rs-line-done" />
-                <div className="rs-step rs-done">
-                  <div className="rs-dot" /><span>En Route</span>
-                </div>
-                <div className="rs-line" />
-                <div className="rs-step">
-                  <div className="rs-dot rs-dot-empty" /><span>In Progress</span>
-                </div>
-                <div className="rs-line" />
-                <div className="rs-step">
-                  <div className="rs-dot rs-dot-empty" /><span>Done</span>
-                </div>
-              </div>
-            </div>
-          </div>
+          <HeroCard />
         </div>
       </section>
 
@@ -272,17 +331,23 @@ const HomePage = () => {
           </div>
 
           <div className="contact-right">
-            <div className="contact-info-item">
-              <div>
-                <div className="contact-info-label">EMAIL</div>
-                <div className="contact-info-value">hello@rideflow.app</div>
-              </div>
-            </div>
-            <div className="contact-info-item">
-              <div>
-                <div className="contact-info-label">PHONE</div>
-                <div className="contact-info-value">(512) 448-0193</div>
-              </div>
+            <div className="contact-card">
+              <h3 className="contact-card-title">Get in touch</h3>
+              <a href="mailto:hello@rideflow.app" className="contact-info-item contact-item-link">
+                <div className="contact-info-icon">✉</div>
+                <div>
+                  <div className="contact-info-label">EMAIL</div>
+                  <div className="contact-info-value">hello@rideflow.app</div>
+                </div>
+              </a>
+              <a href="tel:+15124480193" className="contact-info-item contact-item-link">
+                <div className="contact-info-icon">📞</div>
+                <div>
+                  <div className="contact-info-label">PHONE</div>
+                  <div className="contact-info-value">(512) 448-0193</div>
+                </div>
+              </a>
+              <div className="contact-card-note">Mon–Fri · 9 am–6 pm CT</div>
             </div>
           </div>
         </div>
