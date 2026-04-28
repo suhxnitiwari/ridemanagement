@@ -21,19 +21,28 @@ const Payment = require('./models/Payment');
 // ── Static data ───────────────────────────────────────────────────────────────
 
 const riderData = [
-  { first_name: 'Ava',    last_name: 'Patel',     email: 'ava.patel@utexas.edu',       phone_number: '(512) 555-0101', default_payment_method: 'apple_pay',   rating: 4.90 },
-  { first_name: 'Noah',   last_name: 'Kim',        email: 'noah.kim@gmail.com',          phone_number: '(512) 555-0102', default_payment_method: 'credit_card', rating: 4.75 },
-  { first_name: 'Emma',   last_name: 'Diaz',       email: 'emma.diaz@yahoo.com',         phone_number: '(512) 555-0103', default_payment_method: 'debit_card',  rating: 4.60 },
-  { first_name: 'James',  last_name: 'Wu',         email: 'james.wu@outlook.com',        phone_number: '(512) 555-0104', default_payment_method: 'google_pay',  rating: 4.85 },
-  { first_name: 'Sofia',  last_name: 'Rodriguez',  email: 'sofia.r@utexas.edu',          phone_number: '(512) 555-0105', default_payment_method: 'paypal',      rating: 4.70 },
-  { first_name: 'Lena',   last_name: 'Park',       email: 'lena.park@gmail.com',         phone_number: '(512) 555-0106', default_payment_method: 'credit_card', rating: 4.95 },
-  { first_name: 'Marcus', last_name: 'Johnson',    email: 'marcus.j@hotmail.com',        phone_number: '(512) 555-0107', default_payment_method: 'apple_pay',   rating: 4.50 },
-  { first_name: 'Priya',  last_name: 'Shah',       email: 'priya.shah@gmail.com',        phone_number: '(512) 555-0108', default_payment_method: 'credit_card', rating: 4.80 },
-  { first_name: 'Tyler',  last_name: 'Brooks',     email: 'tyler.brooks@utexas.edu',     phone_number: '(512) 555-0109', default_payment_method: 'debit_card',  rating: 4.65 },
-  { first_name: 'Zoe',    last_name: 'Martinez',   email: 'zoe.martinez@gmail.com',      phone_number: '(512) 555-0110', default_payment_method: 'google_pay',  rating: 4.88 },
+  // ── Clerk test accounts (login with these) ────────────────────────────────
+  { first_name: 'Rider',   last_name: 'Test',      email: 'rider+clerk_test@example.com',    phone_number: '(555) 100-2000', default_payment_method: 'credit_card', rating: 4.70, preferred_temp: 'cool', preferred_music: 'low',          preferred_conversation: 'quiet'  },
+  { first_name: 'Clint',   last_name: 'Tuttle',    email: 'clint.tuttle@gmail.com',          phone_number: '(512) 471-3434', default_payment_method: 'credit_card', rating: 5.00, preferred_temp: 'any',  preferred_music: 'riders_choice', preferred_conversation: 'any'    },
+  { first_name: 'Suhani',  last_name: 'Tiwari',    email: 'suhanitiwari@utexas.edu',         phone_number: '(512) 555-0100', default_payment_method: 'apple_pay',   rating: 4.90, preferred_temp: 'cool', preferred_music: 'low',          preferred_conversation: 'quiet'  },
+  { first_name: 'Suhani',  last_name: 'Tiwari',    email: 'suhxnitiwari@gmail.com',          phone_number: '(512) 555-0199', default_payment_method: 'apple_pay',   rating: 4.90, preferred_temp: 'cool', preferred_music: 'low',          preferred_conversation: 'quiet'  },
+  { first_name: 'Manager', last_name: 'Test',      email: 'testuser+clerk_test@example.com', phone_number: '(555) 300-4000', default_payment_method: 'credit_card', rating: 4.80, preferred_temp: 'warm', preferred_music: 'riders_choice', preferred_conversation: 'chatty' },
+  // ── Sample riders for realistic volume ────────────────────────────────────
+  { first_name: 'Ava',    last_name: 'Patel',     email: 'ava.patel@utexas.edu',       phone_number: '(512) 555-0101', default_payment_method: 'apple_pay',   rating: 4.90, preferred_temp: 'cool', preferred_music: 'low',          preferred_conversation: 'quiet'  },
+  { first_name: 'Noah',   last_name: 'Kim',        email: 'noah.kim@gmail.com',          phone_number: '(512) 555-0102', default_payment_method: 'credit_card', rating: 4.75, preferred_temp: 'any',  preferred_music: 'riders_choice', preferred_conversation: 'any'    },
+  { first_name: 'Emma',   last_name: 'Diaz',       email: 'emma.diaz@yahoo.com',         phone_number: '(512) 555-0103', default_payment_method: 'debit_card',  rating: 4.60, preferred_temp: 'warm', preferred_music: 'off',          preferred_conversation: 'quiet'  },
+  { first_name: 'James',  last_name: 'Wu',         email: 'james.wu@outlook.com',        phone_number: '(512) 555-0104', default_payment_method: 'google_pay',  rating: 4.85, preferred_temp: 'cool', preferred_music: 'riders_choice', preferred_conversation: 'chatty' },
+  { first_name: 'Sofia',  last_name: 'Rodriguez',  email: 'sofia.r@utexas.edu',          phone_number: '(512) 555-0105', default_payment_method: 'paypal',      rating: 4.70, preferred_temp: 'any',  preferred_music: 'low',          preferred_conversation: 'any'    },
+  { first_name: 'Lena',   last_name: 'Park',       email: 'lena.park@gmail.com',         phone_number: '(512) 555-0106', default_payment_method: 'credit_card', rating: 4.95, preferred_temp: 'cool', preferred_music: 'off',          preferred_conversation: 'quiet'  },
+  { first_name: 'Marcus', last_name: 'Johnson',    email: 'marcus.j@hotmail.com',        phone_number: '(512) 555-0107', default_payment_method: 'apple_pay',   rating: 4.50, preferred_temp: 'warm', preferred_music: 'riders_choice', preferred_conversation: 'chatty' },
+  { first_name: 'Priya',  last_name: 'Shah',       email: 'priya.shah@gmail.com',        phone_number: '(512) 555-0108', default_payment_method: 'credit_card', rating: 4.80, preferred_temp: 'any',  preferred_music: 'low',          preferred_conversation: 'any'    },
+  { first_name: 'Tyler',  last_name: 'Brooks',     email: 'tyler.brooks@utexas.edu',     phone_number: '(512) 555-0109', default_payment_method: 'debit_card',  rating: 4.65, preferred_temp: 'cool', preferred_music: 'riders_choice', preferred_conversation: 'quiet'  },
+  { first_name: 'Zoe',    last_name: 'Martinez',   email: 'zoe.martinez@gmail.com',      phone_number: '(512) 555-0110', default_payment_method: 'google_pay',  rating: 4.88, preferred_temp: 'warm', preferred_music: 'off',          preferred_conversation: 'chatty' },
 ];
 
 const driverData = [
+  // ── Clerk test account ────────────────────────────────────────────────────
+  { first_name: 'Driver',  last_name: 'Test',     email: 'driver+clerk_test@example.com', phone_number: '(555) 200-3000', license_plate: 'TXB-9922', vehicle_model: 'Toyota Camry 2023', status: 'available', rating: 4.80 },
   { first_name: 'Marcus',  last_name: 'Lee',      email: 'marcus.lee@rideflow.app',    phone_number: '(512) 555-0201', license_plate: 'TXA-4821', vehicle_model: 'Toyota Camry',   status: 'on_ride',   rating: 4.90 },
   { first_name: 'Priya',   last_name: 'Nair',     email: 'priya.nair@rideflow.app',    phone_number: '(512) 555-0202', license_plate: 'TXB-2234', vehicle_model: 'Honda Accord',   status: 'available', rating: 4.80 },
   { first_name: 'Jordan',  last_name: 'Hall',     email: 'jordan.hall@rideflow.app',   phone_number: '(512) 555-0203', license_plate: 'TXC-9910', vehicle_model: 'Ford Fusion',    status: 'available', rating: 4.70 },
@@ -139,9 +148,19 @@ const seed = async () => {
     console.log('Seeding riders…');
     const riders = [];
     for (const r of riderData) {
-      const [rec] = await Rider.findOrCreate({ where: { email: r.email }, defaults: r });
+      const [rec, created] = await Rider.findOrCreate({ where: { email: r.email }, defaults: r });
+      if (!created) {
+        await rec.update({
+          phone_number:           r.phone_number,
+          default_payment_method: r.default_payment_method,
+          rating:                 r.rating,
+          preferred_temp:         r.preferred_temp        ?? null,
+          preferred_music:        r.preferred_music       ?? null,
+          preferred_conversation: r.preferred_conversation ?? null,
+        });
+      }
       riders.push(rec);
-      console.log(`  ↳ ${rec.first_name} ${rec.last_name}`);
+      console.log(`  ↳ ${rec.first_name} ${rec.last_name} (${created ? 'created' : 'updated'})`);
     }
 
     // ── Drivers ───────────────────────────────────────────────────────────────
