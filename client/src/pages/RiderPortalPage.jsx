@@ -801,6 +801,16 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
                   setCancelling(true);
                   try {
                     await ridesApi.update(activeRide.ride_id, { status: 'cancelled' });
+                    try {
+                      await paymentsApi.create({
+                        ride_id: activeRide.ride_id,
+                        amount: 2.00,
+                        payment_method: riderProfile?.default_payment_method || 'credit_card',
+                        status: 'completed',
+                      });
+                    } catch (feeErr) {
+                      console.error('Cancellation fee failed:', feeErr.response?.data || feeErr.message);
+                    }
                     setActiveRide(null);
                     setRides([]);
                   } catch (err) {

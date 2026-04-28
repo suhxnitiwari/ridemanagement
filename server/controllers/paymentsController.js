@@ -22,7 +22,20 @@ const getAllPayments = async (req, res) => {
 
     if (!admin) {
       // Row-level: only show payments belonging to this Clerk user's rider record
-      const rider = await Rider.findOne({ where: { clerk_user_id: userId } });
+      let rider = await Rider.findOne({ where: { clerk_user_id: userId } });
+
+      // Email fallback: auto-link if clerk_user_id not set yet (same pattern as /riders/me)
+      if (!rider) {
+        try {
+          const clerkUser = await clerkClient.users.getUser(userId);
+          const email = clerkUser.emailAddresses?.[0]?.emailAddress;
+          if (email) {
+            rider = await Rider.findOne({ where: { email } });
+            if (rider) await rider.update({ clerk_user_id: userId });
+          }
+        } catch {}
+      }
+
       if (!rider) return res.json({ success: true, data: [] });
       where.rider_id = rider.rider_id;
     }
