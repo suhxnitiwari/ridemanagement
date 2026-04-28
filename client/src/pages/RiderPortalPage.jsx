@@ -250,9 +250,12 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
 
   const baseFare   = 2.50;
   const PER_MILE   = 1.75;
+  const TAX_RATE   = 0.0825; // Texas state + local sales tax
   const distFare   = routeInfo ? routeInfo.miles * PER_MILE : 0;
   const serviceFee = routeInfo ? 1.20 : 0;
-  const total      = Math.max(baseFare + distFare + serviceFee, 5.00);
+  const subtotal   = Math.max(baseFare + distFare + serviceFee, 5.00);
+  const tax        = routeInfo ? subtotal * TAX_RATE : 0;
+  const total      = subtotal + tax;
 
   /* geocode + autocomplete pickup */
   useEffect(() => {
@@ -610,6 +613,9 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
                     </div>
                     {routeInfo && (
                       <div className="fare-row"><span>Service fee</span><span>$1.20</span></div>
+                    )}
+                    {routeInfo && (
+                      <div className="fare-row"><span>Tax (8.25% TX)</span><span>${tax.toFixed(2)}</span></div>
                     )}
                     {routeInfo && (
                       <div className="fare-row fare-total">
