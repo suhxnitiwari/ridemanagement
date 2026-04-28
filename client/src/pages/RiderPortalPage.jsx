@@ -993,6 +993,26 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
                 </span>
               </div>
 
+              <div className="section-label section-label-mt">Ride preferences</div>
+              <div className="account-field">
+                <span className="account-field-label">Temperature</span>
+                <span className="account-field-value">
+                  {{ cool: 'Cool', warm: 'Warm', any: 'Any' }[riderProfile?.preferred_temp] || '—'}
+                </span>
+              </div>
+              <div className="account-field">
+                <span className="account-field-label">Music</span>
+                <span className="account-field-value">
+                  {{ off: 'Off', low: 'Low', riders_choice: "Rider's Choice" }[riderProfile?.preferred_music] || '—'}
+                </span>
+              </div>
+              <div className="account-field">
+                <span className="account-field-label">Conversation</span>
+                <span className="account-field-value">
+                  {{ quiet: 'Quiet', chatty: 'Chatty', any: 'Any' }[riderProfile?.preferred_conversation] || '—'}
+                </span>
+              </div>
+
             </div>
 
             <div className="profile-stats-col">

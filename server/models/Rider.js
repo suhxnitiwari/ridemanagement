@@ -45,6 +45,24 @@ const Rider = sequelize.define('Rider', {
     allowNull: true,
     unique: true,
   },
+  preferred_temp: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    defaultValue: null,
+    validate: { isIn: [['cool', 'warm', 'any', null]] },
+  },
+  preferred_music: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    defaultValue: null,
+    validate: { isIn: [['off', 'low', 'riders_choice', null]] },
+  },
+  preferred_conversation: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    defaultValue: null,
+    validate: { isIn: [['quiet', 'chatty', 'any', null]] },
+  },
   active: {
     type: DataTypes.BOOLEAN,
     allowNull: false,
