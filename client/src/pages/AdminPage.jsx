@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import PortalNavbar from '../components/PortalNavbar';
 import { useUser } from '@clerk/react';
 import { ridesApi, driversApi } from '../services/api';
@@ -21,6 +21,24 @@ const EMPTY_FORM = {
   fare: '',
 };
 
+const EMPTY_DRIVER_FORM = {
+  status: 'available',
+  rating: '',
+  phone_number: '',
+  vehicle_model: '',
+  vehicle_color: '',
+  license_plate: '',
+};
+
+const DRIVER_SORT_OPTS = [
+  { value: 'rating_desc',   label: 'Rating: High → Low'     },
+  { value: 'rating_asc',    label: 'Rating: Low → High'     },
+  { value: 'revenue_desc',  label: 'Revenue: High → Low'    },
+  { value: 'revenue_asc',   label: 'Revenue: Low → High'    },
+  { value: 'rides_desc',    label: 'Total Rides: Most First' },
+  { value: 'name_asc',      label: 'Name: A → Z'            },
+];
+
 const AdminPage = ({ theme, onThemeToggle }) => {
   const [rides,        setRides]        = useState([]);
   const [loading,      setLoading]      = useState(true);
@@ -32,7 +50,12 @@ const AdminPage = ({ theme, onThemeToggle }) => {
   const [editingRide,  setEditingRide]  = useState(null);
   const [deletingId,   setDeletingId]   = useState(null);
   const [error,        setError]        = useState('');
-  const [driverStats,  setDriverStats]  = useState([]);
+  const [driverStats,      setDriverStats]      = useState([]);
+  const [driverSort,       setDriverSort]       = useState('rating_desc');
+  const [showDriverEdit,   setShowDriverEdit]   = useState(false);
+  const [editingDriver,    setEditingDriver]    = useState(null);
+  const [driverForm,       setDriverForm]       = useState(EMPTY_DRIVER_FORM);
+  const [deletingDriverId, setDeletingDriverId] = useState(null);
 
   useEffect(() => {
     driversApi.getStats().then((res) => setDriverStats(res.data.data)).catch(() => {});
@@ -126,6 +149,77 @@ const AdminPage = ({ theme, onThemeToggle }) => {
     setEditingRide(null);
     setForm(EMPTY_FORM);
     setError('');
+  };
+
+  // ── Driver sort ────────────────────────────────────────────────────────────
+  const sortedDriverStats = useMemo(() => {
+    const arr = [...driverStats];
+    switch (driverSort) {
+      case 'rating_desc':  return arr.sort((a, b) => b.rating - a.rating);
+      case 'rating_asc':   return arr.sort((a, b) => a.rating - b.rating);
+      case 'revenue_desc': return arr.sort((a, b) => b.total_revenue - a.total_revenue);
+      case 'revenue_asc':  return arr.sort((a, b) => a.total_revenue - b.total_revenue);
+      case 'rides_desc':   return arr.sort((a, b) => b.total_rides - a.total_rides);
+      case 'name_asc':     return arr.sort((a, b) => a.name.localeCompare(b.name));
+      default: return arr;
+    }
+  }, [driverStats, driverSort]);
+
+  // ── Driver edit/delete ──────────────────────────────────────────────────────
+  const openDriverEdit = (d) => {
+    setEditingDriver(d);
+    setDriverForm({
+      status:        d.status        ?? 'available',
+      rating:        d.rating        ?? '',
+      phone_number:  d.phone_number  ?? '',
+      vehicle_model: d.vehicle       ?? '',
+      vehicle_color: d.vehicle_color ?? '',
+      license_plate: d.license_plate ?? '',
+    });
+    setError('');
+    setShowDriverEdit(true);
+  };
+
+  const closeDriverModal = () => {
+    setShowDriverEdit(false);
+    setEditingDriver(null);
+    setDriverForm(EMPTY_DRIVER_FORM);
+    setError('');
+  };
+
+  const handleDriverSubmit = async () => {
+    setMutating(true);
+    setError('');
+    try {
+      await driversApi.update(editingDriver.driver_id, {
+        status:        driverForm.status,
+        rating:        driverForm.rating !== '' ? parseFloat(driverForm.rating) : null,
+        phone_number:  driverForm.phone_number  || null,
+        vehicle_model: driverForm.vehicle_model || null,
+        vehicle_color: driverForm.vehicle_color || null,
+        license_plate: driverForm.license_plate || null,
+      });
+      const res = await driversApi.getStats();
+      setDriverStats(res.data.data);
+      closeDriverModal();
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to save driver');
+    } finally {
+      setMutating(false);
+    }
+  };
+
+  const handleDriverDelete = async (id) => {
+    setMutating(true);
+    try {
+      await driversApi.delete(id);
+      setDriverStats((prev) => prev.filter((d) => d.driver_id !== id));
+      setDeletingDriverId(null);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to remove driver');
+    } finally {
+      setMutating(false);
+    }
   };
 
   // ── Stats ──────────────────────────────────────────────────────────────────
@@ -281,6 +375,17 @@ const AdminPage = ({ theme, onThemeToggle }) => {
           <div className="ride-mgmt-header">
             <h2 className="ride-mgmt-title">Driver Performance</h2>
           </div>
+          <div className="admin-toolbar">
+            <select
+              className="admin-select"
+              value={driverSort}
+              onChange={(e) => setDriverSort(e.target.value)}
+            >
+              {DRIVER_SORT_OPTS.map((o) => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </select>
+          </div>
           <div className="table-wrap">
             {driverStats.length === 0 ? (
               <div className="table-empty">Loading driver stats…</div>
@@ -296,10 +401,11 @@ const AdminPage = ({ theme, onThemeToggle }) => {
                     <th>Total Rides</th>
                     <th>Completed</th>
                     <th>Revenue</th>
+                    <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {driverStats.map((d) => (
+                  {sortedDriverStats.map((d) => (
                     <tr key={d.driver_id}>
                       <td><strong>{d.name}</strong></td>
                       <td>
@@ -319,6 +425,10 @@ const AdminPage = ({ theme, onThemeToggle }) => {
                       <td>{d.total_rides}</td>
                       <td>{d.completed_rides}</td>
                       <td><strong>${d.total_revenue.toFixed(2)}</strong></td>
+                      <td className="tbl-actions">
+                        <button className="tbl-view-btn" onClick={() => openDriverEdit(d)}>Edit</button>
+                        <button className="tbl-delete-btn" onClick={() => setDeletingDriverId(d.driver_id)}>Delete</button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -391,6 +501,85 @@ const AdminPage = ({ theme, onThemeToggle }) => {
               </button>
               <button className="btn btn-primary" onClick={handleSubmit} disabled={mutating}>
                 {mutating ? 'Saving…' : 'Save Changes'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Driver Edit Modal ───────────────────────────────────────── */}
+      {showDriverEdit && (
+        <div className="modal-overlay" onClick={closeDriverModal}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Edit Driver — {editingDriver?.name}</h2>
+              <button className="modal-close" onClick={closeDriverModal}>×</button>
+            </div>
+            {error && <div className="form-error">{error}</div>}
+            <div className="form-grid">
+              <div className="form-group">
+                <label>Status</label>
+                <select value={driverForm.status} onChange={(e) => setDriverForm((f) => ({ ...f, status: e.target.value }))}>
+                  <option value="available">Available</option>
+                  <option value="on_ride">On Ride</option>
+                  <option value="offline">Offline</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Rating (1–5)</label>
+                <input type="number" min="1" max="5" step="0.01" value={driverForm.rating}
+                  onChange={(e) => setDriverForm((f) => ({ ...f, rating: e.target.value }))} />
+              </div>
+              <div className="form-group">
+                <label>Phone Number</label>
+                <input value={driverForm.phone_number} placeholder="(512) 555-0000"
+                  onChange={(e) => setDriverForm((f) => ({ ...f, phone_number: e.target.value }))} />
+              </div>
+              <div className="form-group">
+                <label>Vehicle Model</label>
+                <input value={driverForm.vehicle_model} placeholder="Toyota Camry 2023"
+                  onChange={(e) => setDriverForm((f) => ({ ...f, vehicle_model: e.target.value }))} />
+              </div>
+              <div className="form-group">
+                <label>Vehicle Color</label>
+                <input value={driverForm.vehicle_color} placeholder="Pearl White"
+                  onChange={(e) => setDriverForm((f) => ({ ...f, vehicle_color: e.target.value }))} />
+              </div>
+              <div className="form-group">
+                <label>License Plate</label>
+                <input value={driverForm.license_plate} placeholder="TXS-1234"
+                  onChange={(e) => setDriverForm((f) => ({ ...f, license_plate: e.target.value }))} />
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-ghost" onClick={closeDriverModal} disabled={mutating}>Cancel</button>
+              <button className="btn btn-primary" onClick={handleDriverSubmit} disabled={mutating}>
+                {mutating ? 'Saving…' : 'Save Changes'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Driver Delete Confirm Modal ──────────────────────────────── */}
+      {deletingDriverId && (
+        <div className="modal-overlay" onClick={() => setDeletingDriverId(null)}>
+          <div className="modal modal-sm" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Remove Driver</h2>
+              <button className="modal-close" onClick={() => setDeletingDriverId(null)}>×</button>
+            </div>
+            <p className="modal-body-text">
+              Are you sure you want to remove{' '}
+              <strong>{driverStats.find((d) => d.driver_id === deletingDriverId)?.name}</strong>?
+              This cannot be undone.
+            </p>
+            <div className="modal-footer">
+              <button className="btn btn-ghost" onClick={() => setDeletingDriverId(null)} disabled={mutating}>
+                Cancel
+              </button>
+              <button className="btn btn-danger" onClick={() => handleDriverDelete(deletingDriverId)} disabled={mutating}>
+                {mutating ? 'Removing…' : 'Remove Driver'}
               </button>
             </div>
           </div>
