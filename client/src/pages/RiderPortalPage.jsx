@@ -36,12 +36,15 @@ const isInUS = ([lat, lon]) =>
 
 const geocode = async (address) => {
   if (!address.trim()) return null;
-  const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1&countrycodes=us`;
+  // No countrycodes restriction — let isInUS() reject non-US results so
+  // "Delhi India" geocodes to actual Delhi (non-US) instead of Delhi, NY
+  const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1`;
   try {
     const res = await fetch(url, { headers: { 'Accept-Language': 'en', 'User-Agent': 'RideFlow-App' } });
     const data = await res.json();
     if (!data.length) return null;
-    return [parseFloat(data[0].lat), parseFloat(data[0].lon)];
+    const coords = [parseFloat(data[0].lat), parseFloat(data[0].lon)];
+    return isInUS(coords) ? coords : null;
   } catch { return null; }
 };
 
@@ -207,6 +210,7 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
   const [loadingActive,           setLoadingActive]           = useState(false);
   const [activeError,             setActiveError]             = useState('');
 
+  const [noDriverMsg,         setNoDriverMsg]         = useState(false);
   const [showSafety,          setShowSafety]          = useState(false);
   const [safetyView,          setSafetyView]          = useState('main');
   const [reportText,          setReportText]          = useState('');
@@ -723,8 +727,11 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
                     ? `tel:+1${activeDriver.phone_number.replace(/\D/g, '')}`
                     : undefined}
                   className={`btn-help${activeDriver?.phone_number ? '' : ' btn-help-dim'}`}
-                  onClick={!activeDriver?.phone_number ? (e) => e.preventDefault() : undefined}
-                  title={activeDriver?.phone_number ? `Call ${activeDriver.phone_number}` : 'Driver not yet assigned'}
+                  onClick={!activeDriver?.phone_number ? (e) => {
+                    e.preventDefault();
+                    setNoDriverMsg(true);
+                    setTimeout(() => setNoDriverMsg(false), 4000);
+                  } : undefined}
                 >
                   {activeDriver?.phone_number ? `Call ${activeDriver.first_name}` : 'Contact Driver'}
                 </a>
@@ -737,6 +744,11 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
                   </button>
                 )}
               </div>
+              {noDriverMsg && (
+                <div className="no-driver-msg">
+                  No driver assigned yet — they'll appear here once your ride is accepted.
+                </div>
+              )}
               {activeRide && (
                 <button
                   className="btn-safety-help"

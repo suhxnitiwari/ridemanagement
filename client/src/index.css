@@ -3887,7 +3887,23 @@ tbody tr:nth-child(even):hover { background: var(--bg-card-hover); }
 .account-field-value-accent { color: var(--magenta); }
 
 /* Dimmed btn-help (no active driver) */
-.btn-help-dim { opacity: 0.5; }
+.btn-help-dim { opacity: 0.5; cursor: default; }
+
+.no-driver-msg {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  background: rgba(174,2,160,0.08);
+  border: 1px solid rgba(174,2,160,0.2);
+  border-radius: var(--radius-md);
+  padding: 0.5rem 0.75rem;
+  margin-top: 0.25rem;
+  animation: fade-in-down 0.2s ease-out;
+}
+
+@keyframes fade-in-down {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
 
 /* Cancel ride modal */
 .cancel-modal-body    { padding: 0 0 1rem; }
