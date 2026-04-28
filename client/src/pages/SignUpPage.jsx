@@ -52,7 +52,7 @@ const SignUpPage = () => {
   if (step === 'signup') {
     return (
       <div className="auth-page">
-        <SignUp routing="path" path="/sign-up" fallbackRedirectUrl="/onboarding" />
+        <SignUp afterSignUpUrl="/onboarding" fallbackRedirectUrl="/onboarding" />
       </div>
     );
   }

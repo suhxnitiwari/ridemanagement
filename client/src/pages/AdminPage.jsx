@@ -493,52 +493,54 @@ const AdminPage = ({ theme, onThemeToggle }) => {
               <div className="admin-subtitle">Search, filter and edit all rides on the platform</div>
             </div>
 
-            <div className="admin-toolbar">
-              <input
-                className="admin-search"
-                type="search"
-                placeholder="Search by pickup or dropoff location…"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-              <select className="admin-select" value={statusFilter} onChange={(e) => setFilter(e.target.value)}>
-                {STATUS_OPTS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
-              </select>
-            </div>
+            <div className="p-card admin-table-card">
+              <div className="admin-toolbar">
+                <input
+                  className="admin-search"
+                  type="search"
+                  placeholder="Search by pickup or dropoff location…"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+                <select className="admin-select" value={statusFilter} onChange={(e) => setFilter(e.target.value)}>
+                  {STATUS_OPTS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+                </select>
+              </div>
 
-            <div className="table-wrap">
-              {loading ? (
-                <div className="table-empty">Loading rides…</div>
-              ) : rides.length === 0 ? (
-                <div className="table-empty">No rides found.</div>
-              ) : (
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Ride ID</th><th>Date</th><th>Pickup</th><th>Dropoff</th>
-                      <th>Status</th><th>Fare</th><th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rides.map((r) => (
-                      <tr key={r.ride_id}>
-                        <td><span className="ride-id-link">R{r.ride_id}</span></td>
-                        <td style={{ whiteSpace: 'nowrap', color: 'var(--text-muted)', fontSize: '0.82rem' }}>
-                          {r.createdAt ? new Date(r.createdAt).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—'}
-                        </td>
-                        <td>{r.pickup_location}</td>
-                        <td>{r.dropoff_location}</td>
-                        <td><span className={`status-badge status-${r.status}`}>{capWords(r.status)}</span></td>
-                        <td>{r.fare ? `$${parseFloat(r.fare).toFixed(2)}` : '—'}</td>
-                        <td className="tbl-actions">
-                          <button className="tbl-view-btn" onClick={() => openEdit(r)}>Edit</button>
-                          <button className="tbl-delete-btn" onClick={() => setDeletingId(r.ride_id)}>Delete</button>
-                        </td>
+              <div className="table-wrap table-wrap-flush">
+                {loading ? (
+                  <div className="table-empty">Loading rides…</div>
+                ) : rides.length === 0 ? (
+                  <div className="table-empty">No rides found.</div>
+                ) : (
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Ride ID</th><th>Date</th><th>Pickup</th><th>Dropoff</th>
+                        <th>Status</th><th>Fare</th><th>Actions</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
+                    </thead>
+                    <tbody>
+                      {rides.map((r) => (
+                        <tr key={r.ride_id}>
+                          <td><span className="ride-id-link">R{r.ride_id}</span></td>
+                          <td style={{ whiteSpace: 'nowrap', color: 'var(--text-muted)', fontSize: '0.82rem' }}>
+                            {r.createdAt ? new Date(r.createdAt).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—'}
+                          </td>
+                          <td>{r.pickup_location}</td>
+                          <td>{r.dropoff_location}</td>
+                          <td><span className={`status-badge status-${r.status}`}>{capWords(r.status)}</span></td>
+                          <td>{r.fare ? `$${parseFloat(r.fare).toFixed(2)}` : '—'}</td>
+                          <td className="tbl-actions">
+                            <button className="tbl-view-btn" onClick={() => openEdit(r)}>Edit</button>
+                            <button className="tbl-delete-btn" onClick={() => setDeletingId(r.ride_id)}>Delete</button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
             </div>
           </>
         )}
@@ -553,62 +555,64 @@ const AdminPage = ({ theme, onThemeToggle }) => {
               <div className="admin-subtitle">Search, sort and manage all drivers on the platform</div>
             </div>
 
-            <div className="admin-toolbar">
-              <input
-                className="admin-search"
-                type="search"
-                placeholder="Search by name, vehicle, or plate…"
-                value={driverSearch}
-                onChange={(e) => setDriverSearch(e.target.value)}
-              />
-              <select className="admin-select" value={driverSort} onChange={(e) => setDriverSort(e.target.value)}>
-                {DRIVER_SORT_OPTS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-              </select>
-            </div>
+            <div className="p-card admin-table-card">
+              <div className="admin-toolbar">
+                <input
+                  className="admin-search"
+                  type="search"
+                  placeholder="Search by name, vehicle, or plate…"
+                  value={driverSearch}
+                  onChange={(e) => setDriverSearch(e.target.value)}
+                />
+                <select className="admin-select" value={driverSort} onChange={(e) => setDriverSort(e.target.value)}>
+                  {DRIVER_SORT_OPTS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                </select>
+              </div>
 
-            <div className="table-wrap">
-              {driverStats.length === 0 ? (
-                <div className="table-empty">Loading driver stats…</div>
-              ) : filteredDriverStats.length === 0 ? (
-                <div className="table-empty">No drivers match your search.</div>
-              ) : (
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Driver</th><th>Vehicle</th><th>Phone</th><th>Status</th>
-                      <th>Rating</th><th>Total Rides</th><th>Completed</th><th>Revenue</th><th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredDriverStats.map((d) => (
-                      <tr key={d.driver_id}>
-                        <td><strong>{d.name}</strong></td>
-                        <td>
-                          <div>{d.vehicle}</div>
-                          <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-                            {d.vehicle_color && <span>{d.vehicle_color} · </span>}
-                            <span>{d.license_plate}</span>
-                          </div>
-                        </td>
-                        <td>
-                          {d.phone_number
-                            ? <a href={`tel:${d.phone_number.replace(/\D/g, '')}`} style={{ color: 'var(--magenta)', textDecoration: 'none' }}>{d.phone_number}</a>
-                            : '—'}
-                        </td>
-                        <td><span className={`status-badge status-${d.status}`}>{capWords(d.status)}</span></td>
-                        <td>★ {parseFloat(d.rating).toFixed(2)}</td>
-                        <td>{d.total_rides}</td>
-                        <td>{d.completed_rides}</td>
-                        <td><strong>${d.total_revenue.toFixed(2)}</strong></td>
-                        <td className="tbl-actions">
-                          <button className="tbl-view-btn" onClick={() => openDriverEdit(d)}>Edit</button>
-                          <button className="tbl-delete-btn" onClick={() => setDeletingDriverId(d.driver_id)}>Delete</button>
-                        </td>
+              <div className="table-wrap table-wrap-flush">
+                {driverStats.length === 0 ? (
+                  <div className="table-empty">Loading driver stats…</div>
+                ) : filteredDriverStats.length === 0 ? (
+                  <div className="table-empty">No drivers match your search.</div>
+                ) : (
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Driver</th><th>Vehicle</th><th>Phone</th><th>Status</th>
+                        <th>Rating</th><th>Total Rides</th><th>Completed</th><th>Revenue</th><th>Actions</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
+                    </thead>
+                    <tbody>
+                      {filteredDriverStats.map((d) => (
+                        <tr key={d.driver_id}>
+                          <td><strong>{d.name}</strong></td>
+                          <td>
+                            <div>{d.vehicle}</div>
+                            <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                              {d.vehicle_color && <span>{d.vehicle_color} · </span>}
+                              <span>{d.license_plate}</span>
+                            </div>
+                          </td>
+                          <td>
+                            {d.phone_number
+                              ? <a href={`tel:${d.phone_number.replace(/\D/g, '')}`} style={{ color: 'var(--magenta)', textDecoration: 'none' }}>{d.phone_number}</a>
+                              : '—'}
+                          </td>
+                          <td><span className={`status-badge status-${d.status}`}>{capWords(d.status)}</span></td>
+                          <td>★ {parseFloat(d.rating).toFixed(2)}</td>
+                          <td>{d.total_rides}</td>
+                          <td>{d.completed_rides}</td>
+                          <td><strong>${d.total_revenue.toFixed(2)}</strong></td>
+                          <td className="tbl-actions">
+                            <button className="tbl-view-btn" onClick={() => openDriverEdit(d)}>Edit</button>
+                            <button className="tbl-delete-btn" onClick={() => setDeletingDriverId(d.driver_id)}>Delete</button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
             </div>
           </>
         )}
