@@ -24,9 +24,13 @@ const searchAddresses = async (query) => {
   } catch { return []; }
 };
 
-// Characters that never appear in real street addresses
-const ADDR_INVALID_RE = /[!$%^&*=[\]{};:"<>?`~|\\]/;
-const isValidAddressInput = (s) => !ADDR_INVALID_RE.test(s);
+// Reject inputs with special chars or clearly non-address patterns (pure numbers / symbols)
+const ADDR_INVALID_RE = /[!$%^&*=[\]{};:"<>?`~|\\#@]/;
+const isValidAddressInput = (s) => {
+  if (ADDR_INVALID_RE.test(s)) return false;
+  if (/^-?\d+$/.test(s.trim())) return false; // pure number like -2033376262
+  return true;
+};
 
 // US bounding box (continental + Alaska + Hawaii)
 const isInUS = ([lat, lon]) =>
@@ -104,6 +108,7 @@ const statusClass = (s) => `status-badge status-${s}`;
 
 /* ── Active Ride Card ──────────────────────────────────────────────────────── */
 const ActiveRideCard = ({ ride, driver, pickupCoords, dropoffCoords }) => {
+  const [mapFullscreen, setMapFullscreen] = useState(false);
   const currentStep = STATUS_STEP_INDEX[ride?.status] ?? 0;
   const initials    = driver
     ? `${driver.first_name[0]}${driver.last_name[0]}`.toUpperCase()
@@ -114,6 +119,13 @@ const ActiveRideCard = ({ ride, driver, pickupCoords, dropoffCoords }) => {
   const vehicleInfo = driver
     ? `${driver.vehicle_model} · ${driver.license_plate}`
     : '—';
+
+  useEffect(() => {
+    if (!mapFullscreen) return;
+    const handler = (e) => { if (e.key === 'Escape') setMapFullscreen(false); };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [mapFullscreen]);
 
   return (
     <div className="active-ride-card">
@@ -131,12 +143,27 @@ const ActiveRideCard = ({ ride, driver, pickupCoords, dropoffCoords }) => {
         {STATUS_TEXT[ride?.status] || 'Awaiting update'}
       </div>
 
-      <Suspense fallback={<div className="map-fallback">Loading map…</div>}>
-        <RideMap
-          pickupCoords={pickupCoords   || FALLBACK_PICKUP}
-          dropoffCoords={dropoffCoords || FALLBACK_DROPOFF}
-        />
-      </Suspense>
+      <div className={`ride-map-wrap${mapFullscreen ? ' map-fullscreen' : ''}`}>
+        <button
+          className="map-fullscreen-btn"
+          onClick={() => setMapFullscreen((f) => !f)}
+          title={mapFullscreen ? 'Exit fullscreen (Esc)' : 'View fullscreen'}
+        >
+          {mapFullscreen ? '⤡' : '⤢'}
+        </button>
+        {mapFullscreen && (
+          <button className="map-fullscreen-close-btn" onClick={() => setMapFullscreen(false)}>
+            ✕ Exit fullscreen
+          </button>
+        )}
+        <Suspense fallback={<div className="map-fallback">Loading map…</div>}>
+          <RideMap
+            pickupCoords={pickupCoords   || FALLBACK_PICKUP}
+            dropoffCoords={dropoffCoords || FALLBACK_DROPOFF}
+            height={mapFullscreen ? '100vh' : '380px'}
+          />
+        </Suspense>
+      </div>
 
       <div className="ride-status-bar">
         <div className="ride-status-label">RIDE STATUS</div>
@@ -158,83 +185,6 @@ const ActiveRideCard = ({ ride, driver, pickupCoords, dropoffCoords }) => {
   );
 };
 
-/* ── Trip Assistant Chat Widget ────────────────────────────────────────────── */
-const WELCOME = 'Hi! I\'m your RideFlow Trip Assistant 🗺️\nAsk me about things to do at your destination, local tips, restaurants, attractions — anything about your trip!';
-
-const ChatWidget = ({ isOpen, onClose, getToken: getAuthToken }) => {
-  const [messages,  setMessages]  = useState([{ role: 'assistant', text: WELCOME }]);
-  const [input,     setInput]     = useState('');
-  const [chatLoading, setChatLoading] = useState(false);
-  const bottomRef = useRef(null);
-
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, chatLoading]);
-
-  const send = async () => {
-    const text = input.trim();
-    if (!text || chatLoading) return;
-    setInput('');
-    setMessages((prev) => [...prev, { role: 'user', text }]);
-    setChatLoading(true);
-    try {
-      const token = await getAuthToken();
-      if (token) setAuthToken(token);
-      const res = await aiApi.getDestinationSuggestions(text);
-      setMessages((prev) => [...prev, { role: 'assistant', text: res.data?.suggestions || 'No response. Try again.' }]);
-    } catch {
-      setMessages((prev) => [...prev, { role: 'assistant', text: 'Something went wrong — please try again.' }]);
-    } finally {
-      setChatLoading(false);
-    }
-  };
-
-  const newChat = () => { setMessages([{ role: 'assistant', text: WELCOME }]); setInput(''); };
-
-  if (!isOpen) return null;
-  return (
-    <div className="chat-panel">
-      <div className="strata-panel-header">
-        <span>✦ Trip Assistant</span>
-        <div className="chat-header-actions">
-          <button className="chat-new-btn" onClick={newChat} title="Start a new conversation">↺ New chat</button>
-          <button className="strata-panel-close" onClick={onClose}>×</button>
-        </div>
-      </div>
-
-      <div className="chat-messages">
-        {messages.map((m, i) => (
-          <div key={i} className={`chat-msg chat-msg-${m.role}`}>
-            {m.role === 'assistant' && <div className="chat-msg-avatar">✦</div>}
-            <div className="chat-msg-bubble">{m.text}</div>
-          </div>
-        ))}
-        {chatLoading && (
-          <div className="chat-msg chat-msg-assistant">
-            <div className="chat-msg-avatar">✦</div>
-            <div className="chat-msg-bubble chat-typing">
-              <span /><span /><span />
-            </div>
-          </div>
-        )}
-        <div ref={bottomRef} />
-      </div>
-
-      <div className="chat-input-row">
-        <input
-          className="chat-input"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }}
-          placeholder="Ask about your destination…"
-          disabled={chatLoading}
-          autoFocus
-        />
-        <button className="chat-send-btn" onClick={send} disabled={!input.trim() || chatLoading}>→</button>
-      </div>
-    </div>
-  );
-};
 
 /* ── Rider Portal Page ─────────────────────────────────────────────────────── */
 const RiderPortalPage = ({ theme, onThemeToggle }) => {
@@ -276,7 +226,6 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
   const [aiSuggestions, setAiSuggestions] = useState('');
   const [aiLoading,     setAiLoading]     = useState(false);
   const [aiError,       setAiError]       = useState('');
-  const [strataOpen,    setStrataOpen]    = useState(false);
 
   const [riderStats,              setRiderStats]              = useState(null);
   const [riderProfile,            setRiderProfile]            = useState(null);
@@ -574,7 +523,7 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
                         if (bookError) setBookError('');
                         setPickupInputError(
                           val.trim() && !isValidAddressInput(val)
-                            ? 'Invalid characters. Please enter a real street address.'
+                            ? 'Please enter a valid United States address (e.g. 123 Main St, Austin TX).'
                             : ''
                         );
                         if (pickupInputRef.current) setPickupRect(pickupInputRef.current.getBoundingClientRect());
@@ -616,7 +565,7 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
                         if (bookError) setBookError('');
                         setDropoffInputError(
                           val.trim() && !isValidAddressInput(val)
-                            ? 'Invalid characters. Please enter a real street address.'
+                            ? 'Please enter a valid United States address (e.g. 123 Main St, Austin TX).'
                             : ''
                         );
                         if (dropoffInputRef.current) setDropoffRect(dropoffInputRef.current.getBoundingClientRect());
@@ -686,10 +635,10 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
                     <p className="book-hint book-hint-error">{dropoffInputError}</p>
                   )}
                   {pickup.trim() && !pickupInputError && pickupGeoFailed && (
-                    <p className="book-hint book-hint-error">Pickup not found. RideFlow only operates in the United States.</p>
+                    <p className="book-hint book-hint-error">Please enter a valid United States address for pickup.</p>
                   )}
                   {dropoff.trim() && !dropoffInputError && dropoffGeoFailed && (
-                    <p className="book-hint book-hint-error">Dropoff not found. RideFlow only operates in the United States.</p>
+                    <p className="book-hint book-hint-error">Please enter a valid United States address for dropoff.</p>
                   )}
                   {pickup.trim() && dropoff.trim() && !pickupInputError && !dropoffInputError && !pickupGeoFailed && !dropoffGeoFailed && (!pickupCoords || !dropoffCoords) && (
                     <p className="book-hint">Resolving addresses…</p>
@@ -760,20 +709,8 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
       {activeTab === 'active' && (
         <div className="active-ride-page">
           <div className="active-ride-left">
-            <div className="page-header">
-              <h1>Active Ride</h1>
-              <p>
-                {loadingActive ? 'Loading…'
-                  : activeError ? activeError
-                  : activeRide  ? STATUS_TEXT[activeRide.status] || 'Ride in progress'
-                  : 'No active ride found'}
-              </p>
-            </div>
-
             {loadingActive ? (
-              <div className="p-card p-card-state">
-                Loading your ride…
-              </div>
+              <div className="p-card p-card-state">Loading your ride…</div>
             ) : activeError ? (
               <div className="p-card p-card-error">{activeError}</div>
             ) : !activeRide ? (
@@ -1110,21 +1047,6 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
         </div>
       )}
 
-      {/* ── Floating Trip Assistant Chat ─────────────────────────────── */}
-      <div className="strata-widget">
-        {strataOpen && (
-          <div className="strata-panel">
-            <ChatWidget isOpen={strataOpen} onClose={() => setStrataOpen(false)} getToken={getToken} />
-          </div>
-        )}
-        <button
-          className={`strata-fab${strataOpen ? ' strata-fab-open' : ''}`}
-          onClick={() => setStrataOpen((o) => !o)}
-          aria-label="Trip assistant chat"
-        >
-          {strataOpen ? '×' : '💬'}
-        </button>
-      </div>
 
       {/* ── Ride History ─────────────────────────────────────────────── */}
       {activeTab === 'history' && (

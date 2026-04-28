@@ -36,7 +36,16 @@ const FitBounds = ({ pickup, dropoff }) => {
   return null;
 };
 
-const RideMap = ({ pickupCoords, dropoffCoords }) => {
+const InvalidateSize = ({ trigger }) => {
+  const map = useMap();
+  useEffect(() => {
+    const t = setTimeout(() => map.invalidateSize(), 120);
+    return () => clearTimeout(t);
+  }, [trigger, map]);
+  return null;
+};
+
+const RideMap = ({ pickupCoords, dropoffCoords, height = '260px' }) => {
   const [routePoints, setRoutePoints] = useState(null);
   const center = pickupCoords || dropoffCoords || [30.2849, -97.7341];
 
@@ -65,12 +74,13 @@ const RideMap = ({ pickupCoords, dropoffCoords }) => {
   }, [JSON.stringify(pickupCoords), JSON.stringify(dropoffCoords)]);
 
   return (
-    <MapContainer center={center} zoom={13} style={{ height: '260px', width: '100%', borderRadius: '12px' }}>
+    <MapContainer center={center} zoom={13} style={{ height, width: '100%', borderRadius: '12px' }}>
       <TileLayer
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         attribution='&copy; <a href="https://openstreetmap.org">OpenStreetMap</a>'
       />
       <FitBounds pickup={pickupCoords} dropoff={dropoffCoords} />
+      <InvalidateSize trigger={height} />
       {pickupCoords  && <Marker position={pickupCoords}  icon={pickupIcon}  />}
       {dropoffCoords && <Marker position={dropoffCoords} icon={dropoffIcon} />}
       {routePoints && (
