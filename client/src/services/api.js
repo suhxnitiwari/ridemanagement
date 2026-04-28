@@ -55,4 +55,8 @@ export const aiApi = {
     api.post('/ai/destination-suggestions', { destination }),
 };
 
+export const statsApi = {
+  get: () => api.get('/stats'),
+};
+
 export default api;

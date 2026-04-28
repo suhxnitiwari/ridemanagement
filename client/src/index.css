@@ -3264,6 +3264,23 @@ tbody tr:nth-child(even):hover { background: var(--bg-card-hover); }
   color: var(--text-primary);
 }
 
+/* ── Notify form ─────────────────────────────────────────────────────────── */
+.notify-form-row   { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.form-status       { font-size: 0.82rem; margin-top: 0.4rem; }
+.form-status-error { color: var(--danger, #ef4444); }
+.form-status-ok    { color: var(--success, #22c55e); }
+
+/* ── Mini feature number labels ──────────────────────────────────────────── */
+.mini-num {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: var(--magenta);
+  font-family: 'Syne', sans-serif;
+  line-height: 1;
+  margin-bottom: 0.6rem;
+  letter-spacing: -0.02em;
+}
+
 /* ── Utility classes (replacing inline styles) ─────────────────────────── */
 
 /* Map loading fallbacks */

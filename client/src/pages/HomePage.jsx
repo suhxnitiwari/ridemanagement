@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { statsApi } from '../services/api';
 
 const REVIEWS = [
   {
@@ -9,7 +10,7 @@ const REVIEWS = [
   {
     stars: '★★★★★',
     quote: 'The driver dashboard is clean. I can see my earnings, accept rides, and track my week — all in one place.',
-    initials: 'ML', color: 'purple', name: 'Marcus L.', role: 'Driver · 4.9 · 214 rides', dark: true,
+    initials: 'ML', color: 'purple', name: 'Marcus L.', role: 'Driver · Austin, TX', dark: true,
   },
   {
     stars: '★★★★★',
@@ -24,7 +25,7 @@ const REVIEWS = [
   {
     stars: '★★★★★',
     quote: 'RideFlow matched me with a rider two minutes after I went online. The earnings are transparent and fair.',
-    initials: 'DW', color: 'pink', name: 'Darius W.', role: 'Driver · 4.8 · 178 rides', dark: false,
+    initials: 'DW', color: 'pink', name: 'Darius W.', role: 'Driver · Dallas, TX', dark: false,
   },
   {
     stars: '★★★★★',
@@ -36,11 +37,11 @@ const REVIEWS = [
 const isValidEmail = (e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
 
 const NotifyForm = ({ inputClass, btnClass, btnLabel, placeholder }) => {
-  const [email,   setEmail]   = useState('');
-  const [status,  setStatus]  = useState(''); // 'success' | 'error' | ''
+  const [email,  setEmail]  = useState('');
+  const [status, setStatus] = useState('');
 
   const handleSubmit = () => {
-    if (!email.trim()) { setStatus('error-empty'); return; }
+    if (!email.trim())      { setStatus('error-empty');   return; }
     if (!isValidEmail(email)) { setStatus('error-invalid'); return; }
     setStatus('success');
     setEmail('');
@@ -48,7 +49,7 @@ const NotifyForm = ({ inputClass, btnClass, btnLabel, placeholder }) => {
 
   return (
     <div>
-      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+      <div className="notify-form-row">
         <input
           className={inputClass}
           type="email"
@@ -59,9 +60,9 @@ const NotifyForm = ({ inputClass, btnClass, btnLabel, placeholder }) => {
         />
         <button className={btnClass} onClick={handleSubmit}>{btnLabel}</button>
       </div>
-      {status === 'error-empty'   && <p style={{ color: 'var(--danger, #ef4444)', fontSize: '0.82rem', marginTop: '0.4rem' }}>Please enter your email first.</p>}
-      {status === 'error-invalid' && <p style={{ color: 'var(--danger, #ef4444)', fontSize: '0.82rem', marginTop: '0.4rem' }}>Please enter a valid email address.</p>}
-      {status === 'success'       && <p style={{ color: 'var(--success, #22c55e)', fontSize: '0.82rem', marginTop: '0.4rem' }}>You're on the list! We'll notify you at launch.</p>}
+      {status === 'error-empty'   && <p className="form-status form-status-error">Please enter your email first.</p>}
+      {status === 'error-invalid' && <p className="form-status form-status-error">Please enter a valid email address.</p>}
+      {status === 'success'       && <p className="form-status form-status-ok">You're on the list! We'll notify you at launch.</p>}
     </div>
   );
 };
@@ -101,6 +102,16 @@ const TestimonialsCarousel = () => {
 };
 
 const HomePage = () => {
+  const [stats, setStats] = useState(null);
+
+  useEffect(() => {
+    statsApi.get()
+      .then((res) => setStats(res.data?.data ?? null))
+      .catch(() => {});
+  }, []);
+
+  const driver = stats?.featured_driver;
+
   return (
     <div className="landing">
       {/* ── Hero ─────────────────────────────────────────────── */}
@@ -117,31 +128,43 @@ const HomePage = () => {
           </h1>
 
           <p className="hero-sub">
-            A full-stack rideshare platform connecting <strong>riders</strong>,{' '}
-            <strong>drivers</strong>, and <strong>admins</strong> — built on React, Node.js &amp;
-            PostgreSQL.
+            Book a ride in seconds. Track your driver in real time.
+            Arrive on schedule — with full fare transparency from the start.
           </p>
 
           <div className="hero-cta-row">
-            <NotifyForm inputClass="hero-email-input" btnClass="btn btn-dark" btnLabel="Notify me" placeholder="Your email — get notified at launch…" />
+            <NotifyForm
+              inputClass="hero-email-input"
+              btnClass="btn btn-dark"
+              btnLabel="Notify me"
+              placeholder="Your email — get notified at launch…"
+            />
           </div>
 
           <div className="hero-stats">
             <div className="hero-stat">
-              <span className="hero-stat-num">3<sup>+</sup></span>
-              <span className="hero-stat-label">User roles</span>
+              <span className="hero-stat-num">
+                {stats ? stats.total_rides : '—'}
+              </span>
+              <span className="hero-stat-label">Rides booked</span>
             </div>
             <div className="hero-stat">
-              <span className="hero-stat-num">23<sup>+</sup></span>
-              <span className="hero-stat-label">API routes</span>
+              <span className="hero-stat-num">
+                {stats ? stats.completed_rides : '—'}
+              </span>
+              <span className="hero-stat-label">Trips completed</span>
             </div>
             <div className="hero-stat">
-              <span className="hero-stat-num">4</span>
-              <span className="hero-stat-label">DB tables</span>
+              <span className="hero-stat-num">
+                {stats ? stats.total_riders : '—'}
+              </span>
+              <span className="hero-stat-label">Riders</span>
             </div>
             <div className="hero-stat">
-              <span className="hero-stat-num">∞</span>
-              <span className="hero-stat-label">Rides possible</span>
+              <span className="hero-stat-num">
+                {stats ? stats.total_drivers : '—'}
+              </span>
+              <span className="hero-stat-label">Drivers</span>
             </div>
           </div>
         </div>
@@ -149,10 +172,17 @@ const HomePage = () => {
         <div className="hero-right">
           <div className="driver-card">
             <div className="driver-card-header">
-              <div className="driver-avatar">MT</div>
+              <div className="driver-avatar">
+                {driver ? driver.initials : '—'}
+              </div>
               <div className="driver-info">
-                <div className="driver-name">Marcus T. · TXA-4821</div>
-                <div className="driver-stars">★★★★★ <span>4.9</span></div>
+                <div className="driver-name">
+                  {driver ? `${driver.name} · ${driver.license_plate}` : 'Loading driver…'}
+                </div>
+                <div className="driver-stars">
+                  {'★'.repeat(Math.round(parseFloat(driver?.rating ?? 5)))}{' '}
+                  <span>{driver?.rating ?? '—'}</span>
+                </div>
               </div>
               <span className="arrived-badge">Arrived!</span>
             </div>
@@ -218,8 +248,8 @@ const HomePage = () => {
             <div className="feature-icon-wrap feature-icon-dark">
               <span className="feature-icon">⬡</span>
             </div>
-            <h3 style={{ color: '#fff' }}>Integrated payments</h3>
-            <p style={{ color: 'rgba(255,255,255,0.75)' }}>Auto payment records on completion with full history.</p>
+            <h3>Integrated payments</h3>
+            <p>Auto payment records on completion with full history.</p>
           </div>
 
           <div className="feature-card feature-card-light">
@@ -235,22 +265,22 @@ const HomePage = () => {
       {/* ── Mini Features ─────────────────────────────────────── */}
       <section className="mini-features">
         <div className="mini-feature">
-          <div className="mini-icon">🕐</div>
+          <div className="mini-num">01</div>
           <h4>Instant matching</h4>
           <p>Drivers matched to nearby requests automatically.</p>
         </div>
         <div className="mini-feature">
-          <div className="mini-icon">🔒</div>
+          <div className="mini-num">02</div>
           <h4>Secure payments</h4>
           <p>Every ride auto-generates a full payment record.</p>
         </div>
         <div className="mini-feature">
-          <div className="mini-icon">📡</div>
+          <div className="mini-num">03</div>
           <h4>Live status updates</h4>
           <p>Every status change pushed to riders in real time.</p>
         </div>
         <div className="mini-feature">
-          <div className="mini-icon">🖥</div>
+          <div className="mini-num">04</div>
           <h4>Admin control center</h4>
           <p>Full visibility into every ride, driver, and payment.</p>
         </div>
@@ -270,21 +300,24 @@ const HomePage = () => {
             <h2 className="contact-heading">Get in touch</h2>
             <p className="contact-sub">Have questions about RideFlow? We'd love to hear from you.</p>
             <div className="contact-cta-row">
-              <NotifyForm inputClass="hero-email-input" btnClass="btn btn-magenta" btnLabel="Join the list" placeholder="Your email address…" />
+              <NotifyForm
+                inputClass="hero-email-input"
+                btnClass="btn btn-magenta"
+                btnLabel="Join the list"
+                placeholder="Your email address…"
+              />
             </div>
             <p className="contact-fine">No spam. Just launch updates and early access.</p>
           </div>
 
           <div className="contact-right">
             <div className="contact-info-item">
-              <span className="contact-info-icon">✉</span>
               <div>
                 <div className="contact-info-label">EMAIL</div>
                 <div className="contact-info-value">hello@rideflow.app</div>
               </div>
             </div>
             <div className="contact-info-item">
-              <span className="contact-info-icon">📞</span>
               <div>
                 <div className="contact-info-label">PHONE</div>
                 <div className="contact-info-value">(512) 471-5921</div>
