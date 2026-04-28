@@ -77,9 +77,8 @@ const dropoffs = [
 
 const PAYMENT_METHODS = ['credit_card', 'debit_card', 'apple_pay', 'google_pay', 'paypal'];
 
-// One consistent card-last-4 per rider (index matches riderData order)
+// One consistent account/card last-4 per rider — shown for every payment method
 const RIDER_CARD_LAST_FOUR = ['4247', '8831', '1592', '7734', '3316', '9981', '4452', '7823', '2291', '5543', '8876', '3317', '6694', '1123', '9988'];
-const CARD_METHODS = new Set(['credit_card', 'debit_card']);
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -222,8 +221,10 @@ const seed = async () => {
         const span = 86;
         daysAgo = Math.round(89 - (span * i / (GENERAL - ACTIVE_TAIL - 1)));
       }
+      // General rides go to non-key riders only (indices KEY_RIDER_COUNT..end)
+      const nonKeyCount = riders.length - KEY_RIDER_COUNT;
       return {
-        rider_id:         riders[i % riders.length].rider_id,
+        rider_id:         riders[KEY_RIDER_COUNT + (i % nonKeyCount)].rider_id,
         driver_id:        status === 'requested' || status === 'cancelled'
                             ? null
                             : drivers[i % drivers.length].driver_id,
@@ -267,7 +268,7 @@ const seed = async () => {
       const payDate      = new Date(new Date(ride.createdAt).getTime() + (15 + Math.floor(Math.random() * 25)) * 60 * 1000);
       const method       = PAYMENT_METHODS[payIdx % PAYMENT_METHODS.length];
       const riderIdx     = riderIndexMap[ride.rider_id] ?? 0;
-      const cardLastFour = CARD_METHODS.has(method) ? RIDER_CARD_LAST_FOUR[riderIdx % RIDER_CARD_LAST_FOUR.length] : null;
+      const cardLastFour = RIDER_CARD_LAST_FOUR[riderIdx % RIDER_CARD_LAST_FOUR.length];
       await Payment.create({
         ride_id:        ride.ride_id,
         rider_id:       ride.rider_id,
@@ -287,7 +288,7 @@ const seed = async () => {
       const rider        = riders.find((r) => r.rider_id === ride.rider_id);
       const method       = rider?.default_payment_method || 'credit_card';
       const riderIdx     = riderIndexMap[ride.rider_id] ?? 0;
-      const cardLastFour = CARD_METHODS.has(method) ? RIDER_CARD_LAST_FOUR[riderIdx % RIDER_CARD_LAST_FOUR.length] : null;
+      const cardLastFour = RIDER_CARD_LAST_FOUR[riderIdx % RIDER_CARD_LAST_FOUR.length];
       await Payment.create({
         ride_id:        ride.ride_id,
         rider_id:       ride.rider_id,

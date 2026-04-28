@@ -84,11 +84,8 @@ const FALLBACK_DROPOFF = [30.2672, -97.7431];
 const capWords = (s) =>
   s.split('_').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 
-const CARD_METHODS = new Set(['credit_card', 'debit_card']);
 const formatMethod = (method, lastFour) => {
-  if (lastFour && CARD_METHODS.has(method)) {
-    return `${capWords(method)} ···· ${lastFour}`;
-  }
+  if (lastFour) return `${capWords(method)} ···· ${lastFour}`;
   return capWords(method);
 };
 
@@ -271,8 +268,7 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
       .catch(() => {});
   }, []);
 
-  const handleGetSuggestions = async () => {
-    const dest = dropoff.trim();
+  const handleGetSuggestions = async (dest = dropoff.trim()) => {
     if (!dest) return;
     setAiSuggestions('');
     setAiError('');
@@ -283,12 +279,25 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
       const res = await aiApi.getDestinationSuggestions(dest);
       setAiSuggestions(res.data?.suggestions || '');
     } catch (err) {
-      console.error('AI suggestions failed:', err?.response?.status, err?.message);
       setAiError(err?.response?.data?.message || 'Could not get suggestions. Try again.');
     } finally {
       setAiLoading(false);
     }
   };
+
+  /* auto-trigger suggestions as user types a dropoff */
+  useEffect(() => {
+    if (!dropoff.trim()) { setAiSuggestions(''); setAiError(''); return; }
+    if (dropoff.length < 3 || aiLoading) return;
+    const t = setTimeout(() => handleGetSuggestions(dropoff.trim()), 1200);
+    return () => clearTimeout(t);
+  }, [dropoff]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /* auto-fetch suggestions when active ride tab opens */
+  useEffect(() => {
+    if (activeTab !== 'active' || !activeRide?.dropoff_location || aiSuggestions || aiLoading) return;
+    handleGetSuggestions(activeRide.dropoff_location);
+  }, [activeTab, activeRide]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleBookRide = async () => {
     setBooking(true);
@@ -685,17 +694,20 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
                 >
                   Contact Driver
                 </a>
-                <button
-                  className="btn-help btn-help-danger"
-                  onClick={() => setShowCancel(true)}
-                  disabled={!activeRide}
-                >
-                  Cancel Ride
-                </button>
+                {activeRide && (
+                  <button
+                    className="btn-help btn-help-danger"
+                    onClick={() => setShowCancel(true)}
+                  >
+                    Cancel Ride
+                  </button>
+                )}
               </div>
-              <p className="active-help-note">
-                Cancellations after driver acceptance may incur a $2.00 fee.
-              </p>
+              {activeRide && (
+                <p className="active-help-note">
+                  Cancellations after driver acceptance may incur a $2.00 fee.
+                </p>
+              )}
             </div>
 
             {activeRide && (
@@ -757,6 +769,28 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
                 <span>Rate your driver after every ride.</span>
               </div>
             </div>
+
+            {activeRide && (
+              <div className="p-card ai-assistant-card">
+                <div className="section-label">Things to do at your destination</div>
+                {aiLoading ? (
+                  <div className="ai-loading-text">Getting suggestions…</div>
+                ) : aiError ? (
+                  <div className="alert-error-sm">{aiError}</div>
+                ) : aiSuggestions ? (
+                  <div className="ai-suggestions-text">{aiSuggestions}</div>
+                ) : (
+                  <div className="ai-loading-text">Fetching destination ideas…</div>
+                )}
+                <button
+                  className="btn-portal-cta ai-suggest-btn"
+                  disabled={aiLoading}
+                  onClick={() => handleGetSuggestions(activeRide.dropoff_location)}
+                >
+                  {aiLoading ? 'Getting suggestions…' : 'Refresh suggestions'}
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
