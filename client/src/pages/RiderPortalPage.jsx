@@ -28,6 +28,12 @@ const searchAddresses = async (query) => {
 const ADDR_INVALID_RE = /[!$%^&*=[\]{};:"<>?`~|\\]/;
 const isValidAddressInput = (s) => !ADDR_INVALID_RE.test(s);
 
+// US bounding box (continental + Alaska + Hawaii)
+const isInUS = ([lat, lon]) =>
+  (lat >= 24.0 && lat <= 49.5 && lon >= -125.0 && lon <= -66.5) ||  // continental
+  (lat >= 51.0 && lat <= 71.5 && lon >= -180.0 && lon <= -129.0) || // Alaska
+  (lat >= 18.5 && lat <= 22.5 && lon >= -160.5 && lon <= -154.5);   // Hawaii
+
 const geocode = async (address) => {
   if (!address.trim()) return null;
   const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1&countrycodes=us`;
@@ -220,8 +226,9 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
     if (!pickup.trim() || !isValidAddressInput(pickup)) return;
     const t = setTimeout(async () => {
       const coords = await geocode(pickup);
-      setPickupCoords(coords);
-      setPickupGeoFailed(pickup.trim().length >= 3 && !coords);
+      const valid = coords && isInUS(coords);
+      setPickupCoords(valid ? coords : null);
+      setPickupGeoFailed(pickup.trim().length >= 3 && !valid);
       setPickupSuggestions(await searchAddresses(pickup));
     }, 400);
     return () => clearTimeout(t);
@@ -233,8 +240,9 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
     if (!dropoff.trim() || !isValidAddressInput(dropoff)) return;
     const t = setTimeout(async () => {
       const coords = await geocode(dropoff);
-      setDropoffCoords(coords);
-      setDropoffGeoFailed(dropoff.trim().length >= 3 && !coords);
+      const valid = coords && isInUS(coords);
+      setDropoffCoords(valid ? coords : null);
+      setDropoffGeoFailed(dropoff.trim().length >= 3 && !valid);
       setDropoffSuggestions(await searchAddresses(dropoff));
     }, 400);
     return () => clearTimeout(t);
@@ -722,10 +730,14 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
               <div className="section-label">Need help?</div>
               <div className="active-help-row">
                 <a
-                  href={activeDriver?.phone_number ? `tel:${activeDriver.phone_number}` : '#'}
-                  className={`btn-help${activeDriver ? '' : ' btn-help-dim'}`}
+                  href={activeDriver?.phone_number
+                    ? `tel:+1${activeDriver.phone_number.replace(/\D/g, '')}`
+                    : undefined}
+                  className={`btn-help${activeDriver?.phone_number ? '' : ' btn-help-dim'}`}
+                  onClick={!activeDriver?.phone_number ? (e) => e.preventDefault() : undefined}
+                  title={activeDriver?.phone_number ? `Call ${activeDriver.phone_number}` : 'Driver not yet assigned'}
                 >
-                  Contact Driver
+                  {activeDriver?.phone_number ? `Call ${activeDriver.first_name}` : 'Contact Driver'}
                 </a>
                 {activeRide && (
                   <button

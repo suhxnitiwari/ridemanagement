@@ -2,8 +2,8 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth, useUser, UserButton, SignInButton } from '@clerk/react';
 
 const ALL_LINKS = [
-  { label: 'Riders',  to: '/rider',  roles: ['rider',  'manager'] },
-  { label: 'Drivers', to: '/driver', roles: ['driver', 'manager'] },
+  { label: 'Riders',  to: '/rider',  roles: ['rider',  'admin', 'manager'] },
+  { label: 'Drivers', to: '/driver', roles: ['driver', 'admin', 'manager'] },
   { label: 'Admin',   to: '/admin',  roles: ['admin',  'manager'] },
 ];
 
@@ -12,8 +12,9 @@ const Navbar = ({ theme, onThemeToggle, showThemeToggle, showCta }) => {
   const { isSignedIn } = useAuth();
   const { user } = useUser();
   const role = user?.publicMetadata?.role;
-  const isHome = location.pathname === '/';
-  const navLinks = isHome ? ALL_LINKS : ALL_LINKS.filter((link) => role && link.roles.includes(role));
+  const navLinks = role
+    ? ALL_LINKS.filter((link) => link.roles.includes(role))
+    : ALL_LINKS;
   const isLight = theme === 'light';
 
   return (

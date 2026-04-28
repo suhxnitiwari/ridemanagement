@@ -192,14 +192,22 @@ const DriverPortalPage = ({ theme, onThemeToggle }) => {
     finally { setAccepting(null); }
   };
 
+  const refreshRides = () => {
+    ridesApi.getAll()
+      .then((res) => {
+        const raw = res.data?.data ?? res.data ?? [];
+        setAllRides(Array.isArray(raw) ? raw : []);
+      })
+      .catch(() => {});
+  };
+
   const handleCompleteRide = async () => {
     if (!activeRide) return;
     setMutating('complete');
     try {
       await ridesApi.update(activeRide.ride_id, { status: 'completed' });
       setActiveRide(null);
-      setMyRides([]);
-      setAllRides([]);
+      refreshRides();
     } catch (err) {
       console.error('Complete ride failed:', err.response?.data || err.message);
     } finally { setMutating(null); }
@@ -211,8 +219,7 @@ const DriverPortalPage = ({ theme, onThemeToggle }) => {
     try {
       await ridesApi.update(activeRide.ride_id, { status: 'cancelled' });
       setActiveRide(null);
-      setMyRides([]);
-      setAllRides([]);
+      refreshRides();
     } catch (err) {
       console.error('Cancel ride failed:', err.response?.data || err.message);
     } finally { setMutating(null); }
