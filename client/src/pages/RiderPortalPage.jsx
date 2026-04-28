@@ -663,23 +663,12 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
                 disabled={!dropoff.trim() || aiLoading}
                 onClick={handleGetSuggestions}
               >
-                {aiLoading ? 'Getting suggestions…' : 'Suggest things to do'}
+                {aiLoading
+                  ? 'Getting suggestions…'
+                  : aiSuggestions
+                  ? '↻ Refresh suggestions'
+                  : 'Suggest things to do →'}
               </button>
-
-              <div className="ai-chat-divider">
-                <span className="ai-chat-label">Trip assistant chat</span>
-                <button className="btn-strata-toggle" onClick={() => setStrataOpen((o) => !o)}>
-                  {strataOpen ? 'Close chat' : 'Open chat'}
-                </button>
-              </div>
-              {strataOpen && (
-                <iframe
-                  src="https://strata.fyi/embed?workspace=mis372t"
-                  loading="lazy"
-                  allow="clipboard-write"
-                  className="strata-iframe"
-                />
-              )}
             </div>
           </div>
         </div>
@@ -1030,6 +1019,32 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
           </div>
         </div>
       )}
+
+      {/* ── Floating Trip Assistant Chat ─────────────────────────────── */}
+      <div className="strata-widget">
+        {strataOpen && (
+          <div className="strata-panel">
+            <div className="strata-panel-header">
+              <span>✦ Trip Assistant</span>
+              <button className="strata-panel-close" onClick={() => setStrataOpen(false)}>×</button>
+            </div>
+            <iframe
+              src="https://strata.fyi/embed?workspace=mis372t"
+              loading="lazy"
+              allow="clipboard-write"
+              className="strata-iframe"
+              title="Trip assistant chat"
+            />
+          </div>
+        )}
+        <button
+          className={`strata-fab${strataOpen ? ' strata-fab-open' : ''}`}
+          onClick={() => setStrataOpen((o) => !o)}
+          aria-label="Trip assistant chat"
+        >
+          {strataOpen ? '×' : '💬'}
+        </button>
+      </div>
 
       {/* ── Ride History ─────────────────────────────────────────────── */}
       {activeTab === 'history' && (
