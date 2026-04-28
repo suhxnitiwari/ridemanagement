@@ -157,6 +157,10 @@ const AdminPage = ({ theme, onThemeToggle }) => {
       setError('Pickup and dropoff locations are required.');
       return;
     }
+    if (form.fare !== '' && (isNaN(parseFloat(form.fare)) || parseFloat(form.fare) < 0)) {
+      setError('Fare must be a positive number.');
+      return;
+    }
     setMutating(true);
     setError('');
     try {
@@ -292,7 +296,7 @@ const AdminPage = ({ theme, onThemeToggle }) => {
     const counts  = new Array(7).fill(0);
     const revenue = new Array(7).fill(0);
     allRides.forEach((r) => {
-      const d = new Date(r.createdAt || r.created_at);
+      const d = new Date(r.created_at || r.createdAt);
       if (isNaN(d.getTime())) return;
       const dow = (d.getDay() + 6) % 7;
       counts[dow]++;
@@ -525,7 +529,7 @@ const AdminPage = ({ theme, onThemeToggle }) => {
                         <tr key={r.ride_id}>
                           <td><span className="ride-id-link">R{r.ride_id}</span></td>
                           <td style={{ whiteSpace: 'nowrap', color: 'var(--text-muted)', fontSize: '0.82rem' }}>
-                            {r.createdAt ? new Date(r.createdAt).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—'}
+                            {(r.created_at || r.createdAt) ? new Date(r.created_at || r.createdAt).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—'}
                           </td>
                           <td>{r.pickup_location}</td>
                           <td>{r.dropoff_location}</td>

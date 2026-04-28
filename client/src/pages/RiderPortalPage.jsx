@@ -28,7 +28,10 @@ const searchAddresses = async (query) => {
 const ADDR_INVALID_RE = /[!$%^&*=[\]{};:"<>?`~|\\#@]/;
 const isValidAddressInput = (s) => {
   if (ADDR_INVALID_RE.test(s)) return false;
-  if (/^-?\d+$/.test(s.trim())) return false; // pure number like -2033376262
+  if (s.trim().length < 3) return false;
+  if (/^-?\d+$/.test(s.trim())) return false; // pure number
+  // reject if every word is 1-2 chars (e.g. "a b", "ab")
+  if (s.trim().split(/\s+/).every((w) => w.length <= 2)) return false;
   return true;
 };
 
@@ -39,7 +42,7 @@ const isInUS = ([lat, lon]) =>
   (lat >= 18.5 && lat <= 22.5 && lon >= -160.5 && lon <= -154.5);   // Hawaii
 
 const geocode = async (address) => {
-  if (!address.trim()) return null;
+  if (!address.trim() || address.trim().length < 3) return null;
   // No countrycodes restriction — let isInUS() reject non-US results so
   // "Delhi India" geocodes to actual Delhi (non-US) instead of Delhi, NY
   const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1`;
@@ -295,7 +298,7 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
         const totalSpent = done.reduce((sum, r) => sum + parseFloat(r.fare), 0);
         const now = new Date();
         const monthDone = done.filter((r) => {
-          const d = new Date(r.createdAt);
+          const d = new Date(r.created_at || r.createdAt);
           return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
         });
         const monthSpent = monthDone.reduce((sum, r) => sum + parseFloat(r.fare), 0);
@@ -605,11 +608,15 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
                       <span>Distance {routeInfo ? `(${routeInfo.miles.toFixed(1)} mi)` : pickup && dropoff ? '(calculating…)' : ''}</span>
                       <span>{routeInfo ? `$${distFare.toFixed(2)}` : '—'}</span>
                     </div>
-                    <div className="fare-row"><span>Service fee</span><span>${serviceFee.toFixed(2)}</span></div>
-                    <div className="fare-row fare-total">
-                      <span>Total estimate {routeInfo ? `· ~${routeInfo.minutes} min drive` : ''}</span>
-                      <span>${total.toFixed(2)}</span>
-                    </div>
+                    {routeInfo && (
+                      <div className="fare-row"><span>Service fee</span><span>$1.20</span></div>
+                    )}
+                    {routeInfo && (
+                      <div className="fare-row fare-total">
+                        <span>Total estimate · ~{routeInfo.minutes} min drive</span>
+                        <span>${total.toFixed(2)}</span>
+                      </div>
+                    )}
                   </div>
 
                   {bookError && (
@@ -1077,12 +1084,12 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
                 </thead>
                 <tbody>
                   {[...rides]
-                    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+                    .sort((a, b) => new Date(b.created_at || b.createdAt) - new Date(a.created_at || a.createdAt))
                     .map((r) => (
                     <tr key={r.ride_id}>
                       <td><span className="ride-id-link">R{r.ride_id}</span></td>
                       <td className="td-date">
-                        {r.createdAt ? new Date(r.createdAt).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—'}
+                        {(r.created_at || r.createdAt) ? new Date(r.created_at || r.createdAt).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—'}
                       </td>
                       <td>{r.pickup_location}</td>
                       <td>{r.dropoff_location}</td>
@@ -1130,12 +1137,12 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
                 </thead>
                 <tbody>
                   {[...payments]
-                    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+                    .sort((a, b) => new Date(b.created_at || b.createdAt) - new Date(a.created_at || a.createdAt))
                     .map((p) => (
                     <tr key={p.payment_id}>
                       <td><span className="ride-id-link">PAY-{p.payment_id}</span></td>
                       <td className="td-date">
-                        {p.createdAt ? new Date(p.createdAt).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—'}
+                        {(p.created_at || p.createdAt) ? new Date(p.created_at || p.createdAt).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—'}
                       </td>
                       <td><span className="ride-id-link">R{p.ride_id}</span></td>
                       <td><strong>${parseFloat(p.amount).toFixed(2)}</strong></td>
