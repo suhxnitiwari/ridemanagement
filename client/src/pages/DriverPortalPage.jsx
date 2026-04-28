@@ -10,10 +10,13 @@ const TABS = [
   { id: 'earnings',  label: 'Earnings'  },
 ];
 
+const DRIVER_CUT = 0.65;
+
 const capWords = (s) =>
   s.split('_').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 
 const fmt = (n) => `$${n.toFixed(2)}`;
+const fmtCut = (n) => fmt(n * DRIVER_CUT);
 
 /* ── In-Progress Ride Card ─────────────────────────────────────────────────── */
 const InProgressCard = ({ ride, onComplete, onCancel, mutating }) => {
@@ -133,7 +136,7 @@ const DriverPortalPage = ({ theme, onThemeToggle }) => {
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
     const yearStart  = new Date(now.getFullYear(), 0, 1);
 
-    const sum = (rides) => rides.reduce((s, r) => s + parseFloat(r.fare), 0);
+    const sum = (rides) => rides.reduce((s, r) => s + parseFloat(r.fare) * DRIVER_CUT, 0);
 
     const today = driverRides.filter((r) => new Date(r.createdAt) >= todayStart);
     const week  = driverRides.filter((r) => new Date(r.createdAt) >= weekStart);
@@ -158,7 +161,7 @@ const DriverPortalPage = ({ theme, onThemeToggle }) => {
       const dayStr = target.toDateString();
       const amount = driverRides
         .filter((r) => new Date(r.createdAt).toDateString() === dayStr)
-        .reduce((s, r) => s + parseFloat(r.fare), 0);
+        .reduce((s, r) => s + parseFloat(r.fare) * DRIVER_CUT, 0);
       return { label, amount };
     });
     const max = Math.max(...data.map((d) => d.amount), 1);
@@ -335,7 +338,7 @@ const DriverPortalPage = ({ theme, onThemeToggle }) => {
                       </div>
                       <div className="completed-id">R{r.ride_id}</div>
                     </div>
-                    <div className="completed-fare">{r.fare ? fmt(parseFloat(r.fare)) : '—'}</div>
+                    <div className="completed-fare">{r.fare ? fmtCut(parseFloat(r.fare)) : '—'}</div>
                   </div>
                 ))}
               </div>
@@ -513,18 +516,27 @@ const DriverPortalPage = ({ theme, onThemeToggle }) => {
                   </tr>
                 </thead>
                 <tbody>
-                  {payments.map((p) => (
-                    <tr key={p.payment_id}>
-                      <td><span className="ride-id-link">PAY-{p.payment_id}</span></td>
-                      <td><span className="ride-id-link">R{p.ride_id}</span></td>
-                      <td><strong>{fmt(parseFloat(p.amount))}</strong></td>
-                      <td>
-                        <span className={`status-badge status-${p.status}`}>
-                          {capWords(p.status)}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
+                  {payments.map((p) => {
+                    const linkedRide = allRides.find((r) => r.ride_id === p.ride_id);
+                    const isCancellation = linkedRide?.status === 'cancelled';
+                    return (
+                      <tr key={p.payment_id}>
+                        <td><span className="ride-id-link">PAY-{p.payment_id}</span></td>
+                        <td>
+                          {isCancellation
+                            ? <span className="cancellation-fee-label">Cancellation Fee</span>
+                            : <span className="ride-id-link">R{p.ride_id}</span>
+                          }
+                        </td>
+                        <td><strong>{fmtCut(parseFloat(p.amount))}</strong></td>
+                        <td>
+                          <span className={`status-badge status-${p.status}`}>
+                            {capWords(p.status)}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             )}

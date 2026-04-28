@@ -1181,11 +1181,23 @@ tbody tr:nth-child(even):hover { background: var(--bg-card-hover); }
 
 .feature-card-dark {
   background: #1c0035;
-  color: #eaa0ff;
+  color: #f5e6ff;
 }
 
-.feature-card-dark h3 { color: #eaa0ff; }
-.feature-card-dark p  { color: #c06ed4; }
+.feature-card-dark h3 { color: #f5e6ff; }
+.feature-card-dark p  { color: #d4aaee; }
+
+.feature-card-accent {
+  background: var(--magenta);
+  color: #fff;
+}
+
+.feature-card-accent h3 { color: #fff; }
+.feature-card-accent p  { color: rgba(255,255,255,0.82); }
+
+.feature-icon-accent {
+  background: rgba(255,255,255,0.18);
+}
 
 .feature-card h3 {
   font-family: 'Syne', sans-serif;
@@ -1257,7 +1269,7 @@ tbody tr:nth-child(even):hover { background: var(--bg-card-hover); }
 }
 
 .diff-inner {
-  max-width: 1440px;
+  max-width: 860px;
   margin: 0 auto;
 }
 
@@ -1275,7 +1287,7 @@ tbody tr:nth-child(even):hover { background: var(--bg-card-hover); }
   font-family: 'Syne', sans-serif;
   font-size: clamp(2rem, 3.5vw, 3rem);
   font-weight: 800;
-  color: #eaa0ff;
+  color: #f5e6ff;
   letter-spacing: -0.03em;
   margin-bottom: 0.75rem;
 }
@@ -1288,45 +1300,47 @@ tbody tr:nth-child(even):hover { background: var(--bg-card-hover); }
   margin-bottom: 4rem;
 }
 
-.diff-grid {
+.diff-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.diff-item {
+  padding: 2.5rem 0;
+  border-top: 1px solid rgba(174, 2, 160, 0.2);
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1.25rem;
+  grid-template-columns: 3rem 1fr;
+  gap: 1.5rem;
+  align-items: start;
 }
 
-.diff-card {
-  background: rgba(174, 2, 160, 0.06);
-  border: 1px solid rgba(174, 2, 160, 0.18);
-  border-radius: 16px;
-  padding: 2rem 2.25rem;
-}
-
-.diff-card-full {
-  grid-column: 1 / -1;
+.diff-item:last-child {
+  border-bottom: 1px solid rgba(174, 2, 160, 0.2);
 }
 
 .diff-num {
   font-family: 'Space Grotesk', sans-serif;
-  font-size: 0.7rem;
+  font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.12em;
   color: var(--magenta-soft);
-  margin-bottom: 1.1rem;
+  padding-top: 0.25rem;
 }
 
-.diff-card h3 {
+.diff-item h3 {
   font-family: 'Syne', sans-serif;
-  font-size: 1.1rem;
+  font-size: 1.15rem;
   font-weight: 700;
-  color: #eaa0ff;
-  margin-bottom: 0.65rem;
+  color: #f5e6ff;
+  margin-bottom: 0.5rem;
   line-height: 1.3;
 }
 
-.diff-card p {
-  font-size: 0.88rem;
+.diff-item p {
+  font-size: 0.92rem;
   color: #c06ed4;
   line-height: 1.75;
+  margin: 0;
 }
 
 /* ── Testimonials ─────────────────────────────────────────────────────── */
@@ -1582,8 +1596,7 @@ tbody tr:nth-child(even):hover { background: var(--bg-card-hover); }
   .testimonials-section { padding: 4rem 1.5rem; }
   .mini-features          { grid-template-columns: repeat(2, 1fr); padding: 4rem 1.5rem; }
   .differentiators-section{ padding: 4rem 1.5rem; }
-  .diff-grid              { grid-template-columns: 1fr; }
-  .diff-card-full         { grid-column: 1; }
+  .diff-item              { grid-template-columns: 2rem 1fr; gap: 1rem; padding: 1.75rem 0; }
   .contact-inner          { grid-template-columns: 1fr; gap: 3rem; }
   .contact-section        { padding: 4rem 1.5rem; }
   .landing-footer     { flex-direction: column; gap: 1rem; text-align: center; padding: 2rem 1.5rem; }
@@ -2584,6 +2597,13 @@ tbody tr:nth-child(even):hover { background: var(--bg-card-hover); }
 /* ── Admin table ride id links ───────────────────────────────────────── */
 .ride-id-link {
   color: var(--magenta);
+  font-weight: 700;
+  font-size: 0.82rem;
+  font-family: 'Syne', sans-serif;
+}
+
+.cancellation-fee-label {
+  color: #e07b00;
   font-weight: 700;
   font-size: 0.82rem;
   font-family: 'Syne', sans-serif;

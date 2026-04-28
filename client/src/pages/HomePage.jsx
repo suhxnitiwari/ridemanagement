@@ -186,110 +186,65 @@ const HomePage = () => {
             <div className="feature-icon-wrap feature-icon-light">
               <span className="feature-icon">⬡</span>
             </div>
-            <h3>Live ride tracking</h3>
-            <p>Watch your driver move in real time from request to dropoff.</p>
+            <h3>Real-time ride tracking</h3>
+            <p>Track your ride from request to dropoff with live updates at every stage.</p>
           </div>
 
-          <div className="feature-card feature-card-dark">
-            <div className="feature-icon-wrap feature-icon-dark">
+          <div className="feature-card feature-card-accent">
+            <div className="feature-icon-wrap feature-icon-accent">
               <span className="feature-icon">⬡</span>
             </div>
-            <h3>Integrated payments</h3>
-            <p>Auto payment records on completion with full history.</p>
+            <h3>Seamless payments</h3>
+            <p>Automatic payment processing with instant records and full ride history.</p>
           </div>
 
           <div className="feature-card feature-card-light">
             <div className="feature-icon-wrap feature-icon-light">
               <span className="feature-icon">⬡</span>
             </div>
-            <h3>Admin dashboard</h3>
-            <p>Live stats, ride management, and driver assignment in one view.</p>
+            <h3>Full system visibility</h3>
+            <p>Riders, drivers, and admins each have a clear, purpose-built view of the platform.</p>
           </div>
         </div>
       </section>
 
-      {/* ── Mini Features ─────────────────────────────────────── */}
-      <section className="mini-features">
-        <div className="mini-feature">
-          <div className="mini-num">01</div>
-          <h4>Instant matching</h4>
-          <p>Drivers matched to nearby requests automatically.</p>
-        </div>
-        <div className="mini-feature">
-          <div className="mini-num">02</div>
-          <h4>Transparent fares</h4>
-          <p>See your exact fare — base, distance, and fees — before you confirm.</p>
-        </div>
-        <div className="mini-feature">
-          <div className="mini-num">03</div>
-          <h4>Live status updates</h4>
-          <p>Every status change reflected to riders in real time.</p>
-        </div>
-        <div className="mini-feature">
-          <div className="mini-num">04</div>
-          <h4>Full ride history</h4>
-          <p>Every completed trip logged with fare, route, and payment records.</p>
-        </div>
-      </section>
 
       {/* ── Differentiators ──────────────────────────────────── */}
       <section className="differentiators-section">
         <div className="diff-inner">
-          <div className="diff-header">
-            <div className="diff-eyebrow">Why RideFlow</div>
-            <h2 className="diff-heading">What sets us apart</h2>
-            <p className="diff-sub">
-              Built around trust, transparency, and real user control — not growth at all costs.
-            </p>
-          </div>
-          <div className="diff-grid">
-            <div className="diff-card">
+          <div className="diff-eyebrow">Why RideFlow</div>
+          <h2 className="diff-heading">What sets us apart</h2>
+          <p className="diff-sub">
+            Built for trust and transparency — not growth at all costs.
+          </p>
+          <div className="diff-list">
+            <div className="diff-item">
               <div className="diff-num">01</div>
-              <h3>No surge pricing, ever</h3>
-              <p>
-                Fixed model: base fare plus distance. The full cost is shown before you confirm.
-                No demand multipliers, no unexplained spikes. Competitors optimize for revenue —
-                we optimize for predictability.
-              </p>
+              <div>
+                <h3>Fixed pricing. No surge.</h3>
+                <p>Know your exact fare upfront with a simple base + distance model.</p>
+              </div>
             </div>
-            <div className="diff-card">
+            <div className="diff-item">
               <div className="diff-num">02</div>
-              <h3>Real safety control</h3>
-              <p>
-                Half our full-time driver fleet is female — 5 out of 10. Every driver is
-                background-checked. You can choose a driver that matches your comfort level.
-                That is actual control, not just a policy statement.
-              </p>
+              <div>
+                <h3>Background-checked drivers</h3>
+                <p>Every driver is fully vetted and verified for safety and reliability.</p>
+              </div>
             </div>
-            <div className="diff-card">
+            <div className="diff-item">
               <div className="diff-num">03</div>
-              <h3>Transparent fare breakdown</h3>
-              <p>
-                Base rate, distance, and service fee shown individually before you book.
-                No hidden charges. No algorithmic price adjustments happening behind the scenes.
-                What you see is what you pay.
-              </p>
+              <div>
+                <h3>Safety you can control</h3>
+                <p>Choose a female driver from a 50/50 male–female driver network and use a real-time safety button during rides.</p>
+              </div>
             </div>
-            <div className="diff-card">
+            <div className="diff-item">
               <div className="diff-num">04</div>
-              <h3>Purpose-built roles</h3>
-              <p>
-                A clear separation between rider, driver, and admin means fewer clicks and less
-                noise. Faster decisions at every level. Competitors keep adding features —
-                we reduce friction instead.
-              </p>
-            </div>
-            <div className="diff-card diff-card-full">
-              <div className="diff-num">05</div>
-              <h3>Built for trust, not volume</h3>
-              <p>
-                RideFlow is not designed to maximize ride volume at the expense of user experience.
-                Surge pricing removed. Fare transparency enforced. Safety control built in.
-                App complexity reduced. You know exactly what you are paying, who is driving, and why.
-                That is the one-line difference: a rideshare platform that replaces unpredictable pricing
-                and limited safety control with transparent fares, real driver choice, and a system
-                users actually understand.
-              </p>
+              <div>
+                <h3>Fair pay for drivers (65%)</h3>
+                <p>Drivers keep 65% of every ride, creating better incentives and better service.</p>
+              </div>
             </div>
           </div>
         </div>
@@ -308,14 +263,12 @@ const HomePage = () => {
             <div className="contact-label">GET STARTED TODAY</div>
             <h2 className="contact-heading">Ready to ride?</h2>
             <p className="contact-sub">
-              Create an account and book your first ride in under a minute.
-              Drivers can sign up to start earning immediately.
+              Book your first ride in under a minute. Drivers go through a thorough background check before joining the platform.
             </p>
             <div className="hero-cta-row">
               <Link to="/sign-up" className="btn btn-magenta hero-cta-primary">Create account</Link>
               <Link to="/sign-in" className="btn btn-dark hero-cta-secondary">Sign in</Link>
             </div>
-            <p className="contact-fine">Role assigned at sign-up — choose rider, driver, or admin.</p>
           </div>
 
           <div className="contact-right">
@@ -327,8 +280,8 @@ const HomePage = () => {
             </div>
             <div className="contact-info-item">
               <div>
-                <div className="contact-info-label">UNIVERSITY</div>
-                <div className="contact-info-value">UT Austin · MIS 372T</div>
+                <div className="contact-info-label">PHONE</div>
+                <div className="contact-info-value">(512) 448-0193</div>
               </div>
             </div>
           </div>
