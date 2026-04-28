@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { statsApi } from '../services/api';
 
 const REVIEWS = [
@@ -33,39 +34,6 @@ const REVIEWS = [
     initials: 'RL', color: 'purple', name: 'Riley L.', role: 'Rider · San Antonio, TX', dark: true,
   },
 ];
-
-const isValidEmail = (e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
-
-const NotifyForm = ({ inputClass, btnClass, btnLabel, placeholder }) => {
-  const [email,  setEmail]  = useState('');
-  const [status, setStatus] = useState('');
-
-  const handleSubmit = () => {
-    if (!email.trim())      { setStatus('error-empty');   return; }
-    if (!isValidEmail(email)) { setStatus('error-invalid'); return; }
-    setStatus('success');
-    setEmail('');
-  };
-
-  return (
-    <div>
-      <div className="notify-form-row">
-        <input
-          className={inputClass}
-          type="email"
-          placeholder={placeholder}
-          value={email}
-          onChange={(e) => { setEmail(e.target.value); setStatus(''); }}
-          onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
-        />
-        <button className={btnClass} onClick={handleSubmit}>{btnLabel}</button>
-      </div>
-      {status === 'error-empty'   && <p className="form-status form-status-error">Please enter your email first.</p>}
-      {status === 'error-invalid' && <p className="form-status form-status-error">Please enter a valid email address.</p>}
-      {status === 'success'       && <p className="form-status form-status-ok">You're on the list! We'll notify you at launch.</p>}
-    </div>
-  );
-};
 
 const TestimonialsCarousel = () => {
   const [startIdx, setStartIdx] = useState(0);
@@ -117,11 +85,6 @@ const HomePage = () => {
       {/* ── Hero ─────────────────────────────────────────────── */}
       <section className="hero">
         <div className="hero-left">
-          <div className="landing-pill">
-            <span className="landing-pill-dot" />
-            Now in development
-          </div>
-
           <h1 className="hero-headline">
             Rides,<br />Simplified.<br />
             <span className="hero-headline-magenta">For<br />Everyone.</span>
@@ -133,37 +96,25 @@ const HomePage = () => {
           </p>
 
           <div className="hero-cta-row">
-            <NotifyForm
-              inputClass="hero-email-input"
-              btnClass="btn btn-dark"
-              btnLabel="Notify me"
-              placeholder="Your email — get notified at launch…"
-            />
+            <Link to="/sign-up" className="btn btn-magenta hero-cta-primary">Get started</Link>
+            <Link to="/sign-in" className="btn btn-dark hero-cta-secondary">Sign in</Link>
           </div>
 
           <div className="hero-stats">
             <div className="hero-stat">
-              <span className="hero-stat-num">
-                {stats ? stats.total_rides : '—'}
-              </span>
+              <span className="hero-stat-num">{stats ? stats.total_rides : '—'}</span>
               <span className="hero-stat-label">Rides booked</span>
             </div>
             <div className="hero-stat">
-              <span className="hero-stat-num">
-                {stats ? stats.completed_rides : '—'}
-              </span>
+              <span className="hero-stat-num">{stats ? stats.completed_rides : '—'}</span>
               <span className="hero-stat-label">Trips completed</span>
             </div>
             <div className="hero-stat">
-              <span className="hero-stat-num">
-                {stats ? stats.total_riders : '—'}
-              </span>
+              <span className="hero-stat-num">{stats ? stats.total_riders : '—'}</span>
               <span className="hero-stat-label">Riders</span>
             </div>
             <div className="hero-stat">
-              <span className="hero-stat-num">
-                {stats ? stats.total_drivers : '—'}
-              </span>
+              <span className="hero-stat-num">{stats ? stats.total_drivers : '—'}</span>
               <span className="hero-stat-label">Drivers</span>
             </div>
           </div>
@@ -177,7 +128,7 @@ const HomePage = () => {
               </div>
               <div className="driver-info">
                 <div className="driver-name">
-                  {driver ? `${driver.name} · ${driver.license_plate}` : 'Loading driver…'}
+                  {driver ? `${driver.name} · ${driver.license_plate}` : 'Loading…'}
                 </div>
                 <div className="driver-stars">
                   {'★'.repeat(Math.round(parseFloat(driver?.rating ?? 5)))}{' '}
@@ -204,28 +155,23 @@ const HomePage = () => {
               <div className="ride-status-label">RIDE STATUS</div>
               <div className="ride-status-track">
                 <div className="rs-step rs-done">
-                  <div className="rs-dot" />
-                  <span>Requested</span>
+                  <div className="rs-dot" /><span>Requested</span>
                 </div>
                 <div className="rs-line rs-line-done" />
                 <div className="rs-step rs-done">
-                  <div className="rs-dot" />
-                  <span>Accepted</span>
+                  <div className="rs-dot" /><span>Accepted</span>
                 </div>
                 <div className="rs-line rs-line-done" />
                 <div className="rs-step rs-done">
-                  <div className="rs-dot" />
-                  <span>En Route</span>
+                  <div className="rs-dot" /><span>En Route</span>
                 </div>
                 <div className="rs-line" />
                 <div className="rs-step">
-                  <div className="rs-dot rs-dot-empty" />
-                  <span>In Progress</span>
+                  <div className="rs-dot rs-dot-empty" /><span>In Progress</span>
                 </div>
                 <div className="rs-line" />
                 <div className="rs-step">
-                  <div className="rs-dot rs-dot-empty" />
-                  <span>Done</span>
+                  <div className="rs-dot rs-dot-empty" /><span>Done</span>
                 </div>
               </div>
             </div>
@@ -271,18 +217,18 @@ const HomePage = () => {
         </div>
         <div className="mini-feature">
           <div className="mini-num">02</div>
-          <h4>Secure payments</h4>
-          <p>Every ride auto-generates a full payment record.</p>
+          <h4>Transparent fares</h4>
+          <p>See your exact fare — base, distance, and fees — before you confirm.</p>
         </div>
         <div className="mini-feature">
           <div className="mini-num">03</div>
           <h4>Live status updates</h4>
-          <p>Every status change pushed to riders in real time.</p>
+          <p>Every status change reflected to riders in real time.</p>
         </div>
         <div className="mini-feature">
           <div className="mini-num">04</div>
-          <h4>Admin control center</h4>
-          <p>Full visibility into every ride, driver, and payment.</p>
+          <h4>Full ride history</h4>
+          <p>Every completed trip logged with fare, route, and payment records.</p>
         </div>
       </section>
 
@@ -292,22 +238,21 @@ const HomePage = () => {
         <TestimonialsCarousel />
       </section>
 
-      {/* ── Contact ───────────────────────────────────────────── */}
+      {/* ── CTA Banner ────────────────────────────────────────── */}
       <section className="contact-section">
         <div className="contact-inner">
           <div className="contact-left">
-            <div className="contact-label">CONTACT US</div>
-            <h2 className="contact-heading">Get in touch</h2>
-            <p className="contact-sub">Have questions about RideFlow? We'd love to hear from you.</p>
-            <div className="contact-cta-row">
-              <NotifyForm
-                inputClass="hero-email-input"
-                btnClass="btn btn-magenta"
-                btnLabel="Join the list"
-                placeholder="Your email address…"
-              />
+            <div className="contact-label">GET STARTED TODAY</div>
+            <h2 className="contact-heading">Ready to ride?</h2>
+            <p className="contact-sub">
+              Create an account and book your first ride in under a minute.
+              Drivers can sign up to start earning immediately.
+            </p>
+            <div className="hero-cta-row">
+              <Link to="/sign-up" className="btn btn-magenta hero-cta-primary">Create account</Link>
+              <Link to="/sign-in" className="btn btn-dark hero-cta-secondary">Sign in</Link>
             </div>
-            <p className="contact-fine">No spam. Just launch updates and early access.</p>
+            <p className="contact-fine">Role assigned at sign-up — choose rider, driver, or admin.</p>
           </div>
 
           <div className="contact-right">
@@ -319,8 +264,8 @@ const HomePage = () => {
             </div>
             <div className="contact-info-item">
               <div>
-                <div className="contact-info-label">PHONE</div>
-                <div className="contact-info-value">(512) 471-5921</div>
+                <div className="contact-info-label">UNIVERSITY</div>
+                <div className="contact-info-value">UT Austin · MIS 372T</div>
               </div>
             </div>
           </div>
@@ -337,8 +282,7 @@ const HomePage = () => {
           <span className="footer-course">MIS 372T · Full Stack Development · Spring 2026</span>
         </div>
         <div className="footer-credit">
-          Built by Suhani Tiwari<br />
-          University of Texas at Austin
+          Built by Suhani Tiwari &nbsp;·&nbsp; University of Texas at Austin
         </div>
       </footer>
     </div>
