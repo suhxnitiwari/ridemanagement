@@ -152,10 +152,11 @@ const REVIEWS = [
 
 const TestimonialsCarousel = () => {
   const [startIdx, setStartIdx] = useState(0);
+  const [dir, setDir] = useState('right');
   const total = REVIEWS.length;
 
-  const prev = () => setStartIdx((i) => (i - 1 + total) % total);
-  const next = () => setStartIdx((i) => (i + 1) % total);
+  const prev = () => { setDir('left');  setStartIdx((i) => (i - 1 + total) % total); };
+  const next = () => { setDir('right'); setStartIdx((i) => (i + 1) % total); };
 
   const displayed = [0, 1, 2].map((offset) => REVIEWS[(startIdx + offset) % total]);
 
@@ -164,19 +165,25 @@ const TestimonialsCarousel = () => {
       <button className="testimonials-nav-btn" onClick={prev} aria-label="Previous">‹</button>
 
       <div className="testimonials-grid">
-        {displayed.map((r, i) => (
-          <div key={`${startIdx}-${i}`} className={`testimonial-card ${r.dark ? 'testimonial-dark' : 'testimonial-light'}`}>
-            <div className="t-stars">{r.stars}</div>
-            <p className="t-quote">"{r.quote}"</p>
-            <div className="t-author">
-              <div className={`t-avatar t-avatar-${r.color}`}>{r.initials}</div>
-              <div>
-                <div className="t-name">{r.name}</div>
-                <div className="t-role">{r.role}</div>
+        {displayed.map((r, i) => {
+          const isNew = (dir === 'right' && i === 2) || (dir === 'left' && i === 0);
+          return (
+            <div
+              key={r.name}
+              className={`testimonial-card ${r.dark ? 'testimonial-dark' : 'testimonial-light'}${isNew ? ` card-slide-in-${dir}` : ''}`}
+            >
+              <div className="t-stars">{r.stars}</div>
+              <p className="t-quote">"{r.quote}"</p>
+              <div className="t-author">
+                <div className={`t-avatar t-avatar-${r.color}`}>{r.initials}</div>
+                <div>
+                  <div className="t-name">{r.name}</div>
+                  <div className="t-role">{r.role}</div>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       <button className="testimonials-nav-btn" onClick={next} aria-label="Next">›</button>

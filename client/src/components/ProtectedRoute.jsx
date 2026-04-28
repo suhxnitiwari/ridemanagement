@@ -34,9 +34,9 @@ const ProtectedRoute = ({ children, requiredRole = null }) => {
   // Signed in but no role yet → must complete onboarding first
   if (!role && requiredRole !== null) return <Navigate to="/onboarding" replace />;
 
-  // admin and manager can access any portal
-  if (requiredRole && role !== requiredRole && role !== 'manager' && role !== 'admin') {
-    return <Navigate to="/onboarding" replace />;
+  // only manager can access any portal; all others must match their own role
+  if (requiredRole && role !== requiredRole && role !== 'manager') {
+    return <Navigate to={ROLE_HOME[role] ?? '/'} replace />;
   }
 
   return children;

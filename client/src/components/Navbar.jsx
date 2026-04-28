@@ -2,8 +2,8 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth, useUser, UserButton, SignInButton } from '@clerk/react';
 
 const ALL_LINKS = [
-  { label: 'Riders',  to: '/rider',  roles: ['rider',  'admin', 'manager'] },
-  { label: 'Drivers', to: '/driver', roles: ['driver', 'admin', 'manager'] },
+  { label: 'Riders',  to: '/rider',  roles: ['rider',  'manager'] },
+  { label: 'Drivers', to: '/driver', roles: ['driver', 'manager'] },
   { label: 'Admin',   to: '/admin',  roles: ['admin',  'manager'] },
 ];
 

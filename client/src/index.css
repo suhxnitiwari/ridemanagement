@@ -1531,6 +1531,17 @@ tbody tr:nth-child(even):hover { background: var(--bg-card-hover); }
 
 .testimonial-dark .t-role { color: #c06ed4; }
 
+@keyframes slide-in-right {
+  from { opacity: 0; transform: translateX(50px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes slide-in-left {
+  from { opacity: 0; transform: translateX(-50px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.card-slide-in-right { animation: slide-in-right 0.35s ease-out; }
+.card-slide-in-left  { animation: slide-in-left  0.35s ease-out; }
+
 /* ── Contact Section ──────────────────────────────────────────────────── */
 .contact-section {
   background: linear-gradient(180deg, #f0e6ff 0%, #ede0ff 100%);
@@ -3337,6 +3348,97 @@ tbody tr:nth-child(even):hover { background: var(--bg-card-hover); }
 }
 
 /* ── Auth pages (Sign In / Sign Up) ──────────────────────────────────────── */
+/* ── Onboarding / Role Selection ────────────────────────────────────────── */
+.onboarding-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #0c000f 0%, #1c0035 55%, #2a0050 100%);
+  padding: 2rem;
+}
+
+.onboarding-card {
+  background: #ffffff;
+  border-radius: var(--radius-xl);
+  padding: 3rem 2.5rem;
+  max-width: 520px;
+  width: 100%;
+  box-shadow: 0 32px 80px rgba(0,0,0,0.45);
+  text-align: center;
+}
+
+.onboarding-logo {
+  font-family: 'Syne', sans-serif;
+  font-size: 1.4rem;
+  font-weight: 800;
+  margin-bottom: 2rem;
+}
+
+.onboarding-heading {
+  font-family: 'Syne', sans-serif;
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: #0c000f;
+  margin: 0 0 0.5rem;
+  letter-spacing: -0.02em;
+}
+
+.onboarding-sub {
+  font-size: 0.9rem;
+  color: #7a3d8a;
+  margin: 0 0 2rem;
+}
+
+.onboarding-roles {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.role-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 1.75rem 1.25rem;
+  background: #faf5ff;
+  border: 2px solid rgba(74,15,98,0.1);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+  text-align: center;
+}
+
+.role-card:hover {
+  border-color: #ae02a0;
+  box-shadow: 0 8px 32px rgba(174,2,160,0.18);
+  transform: translateY(-3px);
+}
+
+.role-icon { font-size: 2rem; margin-bottom: 0.2rem; }
+
+.role-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #0c000f;
+  margin: 0;
+}
+
+.role-desc {
+  font-size: 0.78rem;
+  color: #7a3d8a;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.onboarding-error {
+  color: #c0392b;
+  font-size: 0.88rem;
+  margin-top: 1rem;
+}
+
 .auth-page {
   min-height: 100vh;
   display: flex;
