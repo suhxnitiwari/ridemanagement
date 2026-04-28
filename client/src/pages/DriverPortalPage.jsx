@@ -297,7 +297,7 @@ const DriverPortalPage = ({ theme, onThemeToggle }) => {
                     <div className="earnings-row" key={e.label}>
                       <span className="earnings-day">{e.label}</span>
                       <div className="earnings-bar-wrap">
-                        <div className={`earnings-bar earnings-bar-${e.pct}`} />
+                        <div className="earnings-bar" style={{ width: `${e.pct}%` }} />
                       </div>
                       <span className="earnings-amt">{fmt(e.amount)}</span>
                     </div>
@@ -487,7 +487,7 @@ const DriverPortalPage = ({ theme, onThemeToggle }) => {
                 <div className="earnings-row" key={e.label}>
                   <span className="earnings-day">{e.label}</span>
                   <div className="earnings-bar-wrap">
-                    <div className={`earnings-bar earnings-bar-${e.pct}`} />
+                    <div className="earnings-bar" style={{ width: `${e.pct}%` }} />
                   </div>
                   <span className="earnings-amt">{fmt(e.amount)}</span>
                 </div>
@@ -508,7 +508,6 @@ const DriverPortalPage = ({ theme, onThemeToggle }) => {
                     <th>Payment ID</th>
                     <th>Ride</th>
                     <th>Amount</th>
-                    <th>Method</th>
                     <th>Status</th>
                   </tr>
                 </thead>
@@ -518,7 +517,6 @@ const DriverPortalPage = ({ theme, onThemeToggle }) => {
                       <td><span className="ride-id-link">PAY-{p.payment_id}</span></td>
                       <td><span className="ride-id-link">R{p.ride_id}</span></td>
                       <td><strong>{fmt(parseFloat(p.amount))}</strong></td>
-                      <td>{capWords(p.payment_method)}</td>
                       <td>
                         <span className={`status-badge status-${p.status}`}>
                           {capWords(p.status)}
