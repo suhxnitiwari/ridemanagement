@@ -1,9 +1,8 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
-// Fix default marker icons broken by Vite bundling
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
@@ -38,7 +37,32 @@ const FitBounds = ({ pickup, dropoff }) => {
 };
 
 const RideMap = ({ pickupCoords, dropoffCoords }) => {
-  const center = pickupCoords || dropoffCoords || [30.2849, -97.7341]; // Austin, TX
+  const [routePoints, setRoutePoints] = useState(null);
+  const center = pickupCoords || dropoffCoords || [30.2849, -97.7341];
+
+  useEffect(() => {
+    if (!pickupCoords || !dropoffCoords) { setRoutePoints(null); return; }
+
+    const [pickLat, pickLng] = pickupCoords;
+    const [dropLat, dropLng] = dropoffCoords;
+
+    fetch(
+      `https://router.project-osrm.org/route/v1/driving/${pickLng},${pickLat};${dropLng},${dropLat}?overview=full&geometries=geojson`
+    )
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.code === 'Ok' && data.routes?.[0]) {
+          // OSRM returns [lng, lat] — flip to [lat, lng] for Leaflet
+          const coords = data.routes[0].geometry.coordinates.map(([lng, lat]) => [lat, lng]);
+          setRoutePoints(coords);
+        } else {
+          // No road route found (e.g. across ocean) — show nothing rather than a false line
+          setRoutePoints(null);
+        }
+      })
+      .catch(() => setRoutePoints(null));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [JSON.stringify(pickupCoords), JSON.stringify(dropoffCoords)]);
 
   return (
     <MapContainer center={center} zoom={13} style={{ height: '260px', width: '100%', borderRadius: '12px' }}>
@@ -49,8 +73,8 @@ const RideMap = ({ pickupCoords, dropoffCoords }) => {
       <FitBounds pickup={pickupCoords} dropoff={dropoffCoords} />
       {pickupCoords  && <Marker position={pickupCoords}  icon={pickupIcon}  />}
       {dropoffCoords && <Marker position={dropoffCoords} icon={dropoffIcon} />}
-      {pickupCoords && dropoffCoords && (
-        <Polyline positions={[pickupCoords, dropoffCoords]} color="#7c3aed" weight={3} dashArray="6,8" />
+      {routePoints && (
+        <Polyline positions={routePoints} color="#7c3aed" weight={4} />
       )}
     </MapContainer>
   );

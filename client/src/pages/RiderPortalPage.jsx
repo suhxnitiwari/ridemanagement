@@ -823,15 +823,21 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
                   <div className="alert-error-sm">{aiError}</div>
                 ) : aiSuggestions ? (
                   <div className="ai-suggestions-text">{aiSuggestions}</div>
-                ) : (
-                  <div className="ai-loading-text">Fetching destination ideas…</div>
-                )}
+                ) : null}
                 <button
                   className="btn-portal-cta ai-suggest-btn"
                   disabled={aiLoading}
-                  onClick={() => handleGetSuggestions(activeRide.dropoff_location)}
+                  onClick={() => {
+                    setAiSuggestions('');
+                    setAiError('');
+                    handleGetSuggestions(activeRide.dropoff_location);
+                  }}
                 >
-                  {aiLoading ? 'Getting suggestions…' : 'Refresh suggestions'}
+                  {aiLoading
+                    ? 'Finding ideas…'
+                    : aiSuggestions
+                    ? 'Refresh AI recommendations'
+                    : 'See AI recommendations for things to do near your destination →'}
                 </button>
               </div>
             )}
