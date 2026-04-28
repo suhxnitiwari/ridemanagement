@@ -177,47 +177,67 @@ const seed = async () => {
     await Payment.destroy({ where: {} });
     await Ride.destroy({ where: {} });
 
-    // ── Build ride rows: 60 rides spread over 90 days ─────────────────────────
-    const TOTAL = 60;
-    const ACTIVE_TAIL = 8;
-    const statuses = buildStatusList(TOTAL, ACTIVE_TAIL);
+    // ── Block 1: Dedicated rides for the 5 key Clerk test accounts ───────────
+    // Each key account gets 7 rides: 5 completed, 2 cancelled, spread ~8 weeks
+    // Indices 0-4 = rider+clerk_test, clint.tuttle, suhanitiwari@utexas.edu,
+    //               suhxnitiwari@gmail.com, testuser+clerk_test
+    const KEY_RIDER_COUNT = 5;
+    // statuses per key rider — realistic personal history
+    const KEY_STATUSES = ['completed', 'completed', 'completed', 'cancelled', 'completed', 'cancelled', 'completed'];
 
-    // Dates: oldest first (so ride_id order = chronological order)
-    // Rides 0..51 → 89 days ago .. 3 days ago (spaced ~1.7 days apart)
-    // Rides 52..59 → today (active)
-    const rideRows = statuses.map((status, i) => {
-      const isActive = i >= TOTAL - ACTIVE_TAIL;
+    const keyRideRows = [];
+    for (let rIdx = 0; rIdx < KEY_RIDER_COUNT; rIdx++) {
+      for (let j = 0; j < KEY_STATUSES.length; j++) {
+        const status   = KEY_STATUSES[j];
+        // Spread across last 56 days, newest first so index 0 = ~56 days ago
+        const daysAgo  = 56 - j * 8;
+        const drvIdx   = (rIdx * 3 + j) % drivers.length;
+        keyRideRows.push({
+          rider_id:         riders[rIdx].rider_id,
+          driver_id:        status === 'cancelled' ? null : drivers[drvIdx].driver_id,
+          pickup_location:  pickups[(rIdx + j * 2) % pickups.length],
+          dropoff_location: dropoffs[(rIdx + j * 2 + 5) % dropoffs.length],
+          status,
+          fare:             makeFare(),
+          createdAt:        makeDate(daysAgo, 8 + rIdx + j),
+        });
+      }
+    }
+
+    // ── Block 2: General pool — 40 rides spread across all riders ────────────
+    const GENERAL = 40;
+    const ACTIVE_TAIL = 8;
+    const generalStatuses = buildStatusList(GENERAL, ACTIVE_TAIL);
+
+    const generalRideRows = generalStatuses.map((status, i) => {
+      const isActive = i >= GENERAL - ACTIVE_TAIL;
       let daysAgo;
       if (isActive) {
-        daysAgo = Math.max(0, ACTIVE_TAIL - 1 - (i - (TOTAL - ACTIVE_TAIL)));
+        daysAgo = Math.max(0, ACTIVE_TAIL - 1 - (i - (GENERAL - ACTIVE_TAIL)));
       } else {
-        // Spread 0..TOTAL-ACTIVE_TAIL-1 across 89..3 days
-        const span = 86; // days from oldest to 3 days ago
-        daysAgo = Math.round(89 - (span * i / (TOTAL - ACTIVE_TAIL - 1)));
+        const span = 86;
+        daysAgo = Math.round(89 - (span * i / (GENERAL - ACTIVE_TAIL - 1)));
       }
-
-      const riderIdx  = i % riders.length;
-      const driverIdx = i % drivers.length;
-      const pickupIdx  = i % pickups.length;
-      const dropoffIdx = (i + 7) % dropoffs.length;
-
       return {
-        rider_id:         riders[riderIdx].rider_id,
+        rider_id:         riders[i % riders.length].rider_id,
         driver_id:        status === 'requested' || status === 'cancelled'
                             ? null
-                            : drivers[driverIdx].driver_id,
-        pickup_location:  pickups[pickupIdx],
-        dropoff_location: dropoffs[dropoffIdx],
+                            : drivers[i % drivers.length].driver_id,
+        pickup_location:  pickups[i % pickups.length],
+        dropoff_location: dropoffs[(i + 7) % dropoffs.length],
         status,
-        fare:             makeFare(),  // always set — even cancelled had an estimate
+        fare:             makeFare(),
         createdAt:        makeDate(daysAgo),
       };
     });
 
+    const allRideRows = [...keyRideRows, ...generalRideRows];
+    const TOTAL = allRideRows.length;
+
     // ── Insert rides ──────────────────────────────────────────────────────────
-    console.log(`\nInserting ${TOTAL} rides…`);
+    console.log(`\nInserting ${TOTAL} rides (35 key-account + 40 general)…`);
     const createdRides = [];
-    for (const row of rideRows) {
+    for (const row of allRideRows) {
       const ride = await Ride.create(row);
       createdRides.push(ride);
     }
@@ -231,24 +251,42 @@ const seed = async () => {
       .forEach(([s, n]) => console.log(`    ${s.padEnd(12)} ${n}`));
 
     // ── Payments for completed rides ──────────────────────────────────────────
-    console.log('\nInserting payments for completed rides…');
-    const completed = createdRides.filter((r) => r.status === 'completed');
-    for (let i = 0; i < completed.length; i++) {
-      const ride = completed[i];
-      // Payment arrives ~15–40 min after ride creation
+    console.log('\nInserting payments…');
+    const completed  = createdRides.filter((r) => r.status === 'completed');
+    const cancelled  = createdRides.filter((r) => r.status === 'cancelled');
+
+    let payIdx = 0;
+    for (const ride of completed) {
       const payDate = new Date(new Date(ride.createdAt).getTime() + (15 + Math.floor(Math.random() * 25)) * 60 * 1000);
       await Payment.create({
         ride_id:        ride.ride_id,
         rider_id:       ride.rider_id,
         amount:         parseFloat(ride.fare),
-        payment_method: PAYMENT_METHODS[i % PAYMENT_METHODS.length],
+        payment_method: PAYMENT_METHODS[payIdx % PAYMENT_METHODS.length],
         status:         'completed',
         createdAt:      payDate,
       });
+      payIdx++;
     }
-    console.log(`  ↳ ${completed.length} payment records`);
+    console.log(`  ↳ ${completed.length} fare payments`);
 
-    console.log('\n✅ Seed complete — 60 rides, realistic mix, proper dates.');
+    // $2.00 cancellation fee for every cancelled ride
+    for (const ride of cancelled) {
+      const feeDate = new Date(new Date(ride.createdAt).getTime() + 5 * 60 * 1000);
+      // Find the rider's default payment method
+      const rider = riders.find((r) => r.rider_id === ride.rider_id);
+      await Payment.create({
+        ride_id:        ride.ride_id,
+        rider_id:       ride.rider_id,
+        amount:         2.00,
+        payment_method: rider?.default_payment_method || 'credit_card',
+        status:         'completed',
+        createdAt:      feeDate,
+      });
+    }
+    console.log(`  ↳ ${cancelled.length} cancellation fee payments ($2.00 each)`);
+
+    console.log(`\n✅ Seed complete — ${TOTAL} rides, ${completed.length + cancelled.length} payments.`);
     process.exit(0);
   } catch (err) {
     console.error('\n❌ Seed failed:', err.message);
