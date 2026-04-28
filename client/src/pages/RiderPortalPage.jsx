@@ -115,7 +115,7 @@ const ActiveRideCard = ({ ride, driver, pickupCoords, dropoffCoords }) => {
         {STATUS_TEXT[ride?.status] || 'Awaiting update'}
       </div>
 
-      <Suspense fallback={<div style={{ height: 280, background: 'var(--bg-secondary)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>Loading map…</div>}>
+      <Suspense fallback={<div className="map-fallback">Loading map…</div>}>
         <RideMap
           pickupCoords={pickupCoords   || FALLBACK_PICKUP}
           dropoffCoords={dropoffCoords || FALLBACK_DROPOFF}
@@ -413,10 +413,10 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
             <div className="section-label">Request a ride</div>
             <div className="p-card ride-form-fields">
               {bookSuccess ? (
-                <div style={{ textAlign: 'center', padding: '1.5rem 0' }}>
-                  <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>🎉</div>
-                  <div style={{ fontWeight: 600, marginBottom: '0.25rem' }}>Ride requested!</div>
-                  <div style={{ color: 'var(--text-muted)', marginBottom: '1rem' }}>Your driver will be assigned shortly.</div>
+                <div className="book-success">
+                  <div className="book-success-emoji">🎉</div>
+                  <div className="book-success-title">Ride requested!</div>
+                  <div className="book-success-sub">Your driver will be assigned shortly.</div>
                   <button className="btn-portal-cta" onClick={() => setBookSuccess(false)}>Book another</button>
                 </div>
               ) : (
@@ -506,11 +506,11 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
                     )}
                   </div>
 
-                  <Suspense fallback={<div style={{ height: 260, background: 'var(--surface)', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>Loading map…</div>}>
+                  <Suspense fallback={<div className="map-fallback map-fallback-md">Loading map…</div>}>
                     <RideMap pickupCoords={pickupCoords} dropoffCoords={dropoffCoords} />
                   </Suspense>
 
-                  <div className="ride-form-fare" style={{ marginTop: '1rem' }}>
+                  <div className="ride-form-fare">
                     <div className="fare-row"><span>Base fare</span><span>${baseFare.toFixed(2)}</span></div>
                     <div className="fare-row">
                       <span>Distance {routeInfo ? `(${routeInfo.miles.toFixed(1)} mi)` : pickup && dropoff ? '(calculating…)' : ''}</span>
@@ -524,7 +524,7 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
                   </div>
 
                   {bookError && (
-                    <div style={{ background: '#fee2e2', border: '1px solid #ef4444', borderRadius: '8px', padding: '0.75rem 1rem', color: '#b91c1c', fontSize: '0.9rem', marginTop: '0.5rem', fontWeight: 500 }}>
+                    <div className="alert-error">
                       {bookError}
                     </div>
                   )}
@@ -540,16 +540,16 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
                     <p className="book-hint">Enter both pickup and dropoff to continue.</p>
                   )}
                   {pickup.trim() && pickupInputError && (
-                    <p className="book-hint" style={{ color: 'var(--danger)' }}>{pickupInputError}</p>
+                    <p className="book-hint book-hint-error">{pickupInputError}</p>
                   )}
                   {dropoff.trim() && dropoffInputError && (
-                    <p className="book-hint" style={{ color: 'var(--danger)' }}>{dropoffInputError}</p>
+                    <p className="book-hint book-hint-error">{dropoffInputError}</p>
                   )}
                   {pickup.trim() && !pickupInputError && pickupGeoFailed && (
-                    <p className="book-hint" style={{ color: 'var(--danger)' }}>Pickup not found. Try a more specific address.</p>
+                    <p className="book-hint book-hint-error">Pickup not found. Try a more specific address.</p>
                   )}
                   {dropoff.trim() && !dropoffInputError && dropoffGeoFailed && (
-                    <p className="book-hint" style={{ color: 'var(--danger)' }}>Dropoff not found. Try a more specific address.</p>
+                    <p className="book-hint book-hint-error">Dropoff not found. Try a more specific address.</p>
                   )}
                   {pickup.trim() && dropoff.trim() && !pickupInputError && !dropoffInputError && !pickupGeoFailed && !dropoffGeoFailed && (!pickupCoords || !dropoffCoords) && (
                     <p className="book-hint">Resolving addresses…</p>
@@ -587,38 +587,30 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
               </div>
             </div>
 
-            <div className="p-card" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <div className="p-card ai-assistant-card">
               <div className="section-label">AI Destination Assistant</div>
               {aiLoading ? (
-                <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>Getting suggestions…</div>
+                <div className="ai-loading-text">Getting suggestions…</div>
               ) : aiError ? (
-                <div style={{ background: '#fee2e2', border: '1px solid #ef4444', borderRadius: '8px', padding: '0.6rem 0.8rem', color: '#b91c1c', fontSize: '0.85rem' }}>
-                  {aiError}
-                </div>
+                <div className="alert-error-sm">{aiError}</div>
               ) : aiSuggestions ? (
-                <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', whiteSpace: 'pre-line', lineHeight: 1.7 }}>
-                  {aiSuggestions}
-                </div>
+                <div className="ai-suggestions-text">{aiSuggestions}</div>
               ) : (
-                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0 }}>
+                <p className="ai-placeholder-text">
                   Enter a destination then click below to get AI suggestions.
                 </p>
               )}
               <button
-                className="btn-portal-cta"
+                className="btn-portal-cta ai-suggest-btn"
                 disabled={!dropoff.trim() || aiLoading}
                 onClick={handleGetSuggestions}
-                style={{ marginTop: '0.25rem' }}
               >
                 {aiLoading ? 'Getting suggestions…' : 'Suggest things to do'}
               </button>
 
-              <div style={{ borderTop: '1px solid var(--border)', paddingTop: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Trip assistant chat</span>
-                <button
-                  onClick={() => setStrataOpen((o) => !o)}
-                  style={{ fontSize: '0.8rem', padding: '0.3rem 0.75rem', borderRadius: '6px', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer' }}
-                >
+              <div className="ai-chat-divider">
+                <span className="ai-chat-label">Trip assistant chat</span>
+                <button className="btn-strata-toggle" onClick={() => setStrataOpen((o) => !o)}>
                   {strataOpen ? 'Close chat' : 'Open chat'}
                 </button>
               </div>
@@ -627,7 +619,7 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
                   src="https://strata.fyi/embed?workspace=mis372t"
                   loading="lazy"
                   allow="clipboard-write"
-                  style={{ width: '100%', height: '620px', border: 'none', borderRadius: '8px', display: 'block', marginTop: '0.5rem' }}
+                  className="strata-iframe"
                 />
               )}
             </div>
@@ -650,15 +642,15 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
             </div>
 
             {loadingActive ? (
-              <div className="p-card" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+              <div className="p-card p-card-state">
                 Loading your ride…
               </div>
             ) : activeError ? (
-              <div className="p-card" style={{ padding: '1.5rem', color: 'var(--danger)' }}>{activeError}</div>
+              <div className="p-card p-card-error">{activeError}</div>
             ) : !activeRide ? (
-              <div className="p-card" style={{ padding: '2rem', textAlign: 'center' }}>
-                <div style={{ fontSize: '1rem', marginBottom: '0.5rem', fontWeight: 600 }}>No active ride</div>
-                <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '1.25rem' }}>
+              <div className="p-card p-card-centered">
+                <div className="no-ride-title">No active ride</div>
+                <div className="no-ride-sub">
                   You don't have a ride in progress right now.
                 </div>
                 <button className="btn-portal-cta" onClick={() => setActiveTab('book')}>
@@ -681,8 +673,7 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
               <div className="active-help-row">
                 <a
                   href={activeDriver?.phone_number ? `tel:${activeDriver.phone_number}` : '#'}
-                  className="btn-help"
-                  style={{ textDecoration: 'none', textAlign: 'center', opacity: activeDriver ? 1 : 0.5 }}
+                  className={`btn-help${activeDriver ? '' : ' btn-help-dim'}`}
                 >
                   Contact Driver
                 </a>
@@ -700,13 +691,13 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
             </div>
 
             {activeRide && (
-              <div className="p-card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div className="p-card ride-details-card">
                 <div className="section-label">Ride details</div>
-                <div className="account-field" style={{ padding: '0.6rem 0' }}>
+                <div className="account-field account-field-sm">
                   <span className="account-field-label">Ride #</span>
                   <span className="account-field-value">R{activeRide.ride_id}</span>
                 </div>
-                <div className="account-field" style={{ padding: '0.6rem 0' }}>
+                <div className="account-field account-field-sm">
                   <span className="account-field-label">Driver</span>
                   <span className="account-field-value">
                     {activeDriver
@@ -714,7 +705,7 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
                       : 'Awaiting driver'}
                   </span>
                 </div>
-                <div className="account-field" style={{ padding: '0.6rem 0' }}>
+                <div className="account-field account-field-sm">
                   <span className="account-field-label">Vehicle</span>
                   <span className="account-field-value">
                     {activeDriver
@@ -722,21 +713,21 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
                       : '—'}
                   </span>
                 </div>
-                <div className="account-field" style={{ padding: '0.6rem 0' }}>
+                <div className="account-field account-field-sm">
                   <span className="account-field-label">Pickup</span>
-                  <span className="account-field-value" style={{ fontSize: '0.82rem' }}>
+                  <span className="account-field-value account-field-value-sm">
                     {activeRide.pickup_location}
                   </span>
                 </div>
-                <div className="account-field" style={{ padding: '0.6rem 0' }}>
+                <div className="account-field account-field-sm">
                   <span className="account-field-label">Dropoff</span>
-                  <span className="account-field-value" style={{ fontSize: '0.82rem' }}>
+                  <span className="account-field-value account-field-value-sm">
                     {activeRide.dropoff_location}
                   </span>
                 </div>
-                <div className="account-field" style={{ padding: '0.6rem 0', border: 'none' }}>
+                <div className="account-field account-field-sm no-border">
                   <span className="account-field-label">Est. Fare</span>
-                  <span className="account-field-value" style={{ color: 'var(--magenta)' }}>
+                  <span className="account-field-value account-field-value-accent">
                     {activeRide.fare ? `$${parseFloat(activeRide.fare).toFixed(2)}` : '—'}
                   </span>
                 </div>
@@ -771,10 +762,10 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
               <button className="modal-close" onClick={() => setShowCancel(false)}>×</button>
             </div>
 
-            <div style={{ padding: '0 0 1rem' }}>
-              <div className="p-card" style={{ background: 'var(--warning-bg, #fff8e1)', border: '1px solid var(--warning, #f59e0b)', marginBottom: '1rem' }}>
-                <div style={{ fontWeight: 600, marginBottom: '0.25rem' }}>⚠️ Cancellation fee: $2.00</div>
-                <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+            <div className="cancel-modal-body">
+              <div className="p-card cancel-warning-card">
+                <div className="cancel-warning-title">⚠️ Cancellation fee: $2.00</div>
+                <div className="cancel-warning-text">
                   {activeDriver
                   ? `Your driver ${activeDriver.first_name} ${activeDriver.last_name[0]}. has accepted. A $2.00 fee applies.`
                   : 'A cancellation fee may apply depending on ride status.'}
@@ -786,7 +777,7 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
                 <select
                   value={cancelReason}
                   onChange={(e) => setCancelReason(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', borderRadius: '8px', border: '1px solid var(--border)' }}
+                  className="cancel-reason-select"
                 >
                   <option value="">Select a reason…</option>
                   <option value="wait_too_long">Driver is taking too long</option>
@@ -840,7 +831,7 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
             {loadingRides ? (
               <div className="table-empty">Loading rides…</div>
             ) : ridesError ? (
-              <div className="table-empty" style={{ color: 'var(--danger)' }}>{ridesError}</div>
+              <div className="table-empty table-empty-error">{ridesError}</div>
             ) : rides.length === 0 ? (
               <div className="table-empty">No rides found.</div>
             ) : (
@@ -861,7 +852,7 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
                     .map((r) => (
                     <tr key={r.ride_id}>
                       <td><span className="ride-id-link">R{r.ride_id}</span></td>
-                      <td style={{ whiteSpace: 'nowrap', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                      <td className="td-date">
                         {r.createdAt ? new Date(r.createdAt).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—'}
                       </td>
                       <td>{r.pickup_location}</td>
@@ -893,7 +884,7 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
             {loadingPayments ? (
               <div className="table-empty">Loading transactions…</div>
             ) : paymentsError ? (
-              <div className="table-empty" style={{ color: 'var(--danger)' }}>{paymentsError}</div>
+              <div className="table-empty table-empty-error">{paymentsError}</div>
             ) : payments.length === 0 ? (
               <div className="table-empty">No transactions found.</div>
             ) : (
@@ -914,7 +905,7 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
                     .map((p) => (
                     <tr key={p.payment_id}>
                       <td><span className="ride-id-link">PAY-{p.payment_id}</span></td>
-                      <td style={{ whiteSpace: 'nowrap', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                      <td className="td-date">
                         {p.createdAt ? new Date(p.createdAt).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—'}
                       </td>
                       <td><span className="ride-id-link">R{p.ride_id}</span></td>

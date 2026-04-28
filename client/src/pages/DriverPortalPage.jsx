@@ -18,7 +18,7 @@ const fmt = (n) => `$${n.toFixed(2)}`;
 /* ── In-Progress Ride Card ─────────────────────────────────────────────────── */
 const InProgressCard = ({ ride, onComplete, onCancel, mutating }) => {
   if (!ride) return (
-    <div className="in-progress-card" style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem 1rem' }}>
+    <div className="in-progress-card in-progress-no-ride">
       No active ride right now.
     </div>
   );
@@ -290,7 +290,7 @@ const DriverPortalPage = ({ theme, onThemeToggle }) => {
                 mutating={mutating}
               />
 
-              <div className="section-label" style={{ marginTop: '1.5rem' }}>Weekly Earnings</div>
+              <div className="section-label section-label-mt">Weekly Earnings</div>
               <div className="p-card">
                 <div className="earnings-chart">
                   {weeklyChart.map((e) => (
@@ -320,10 +320,10 @@ const DriverPortalPage = ({ theme, onThemeToggle }) => {
                 </div>
               </div>
 
-              <div className="section-label" style={{ marginTop: '1.5rem' }}>Recent Completed</div>
+              <div className="section-label section-label-mt">Recent Completed</div>
               <div className="p-card">
                 {recentCompleted.length === 0 ? (
-                  <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', padding: '0.5rem 0' }}>
+                  <div className="no-data-text">
                     No completed rides yet.
                   </div>
                 ) : recentCompleted.map((r) => (
@@ -495,7 +495,7 @@ const DriverPortalPage = ({ theme, onThemeToggle }) => {
             </div>
           </div>
 
-          <div className="section-label" style={{ marginBottom: '0.75rem' }}>Payment Records</div>
+          <div className="section-label section-label-mb">Payment Records</div>
           <div className="table-wrap">
             {loadingPayments ? (
               <div className="table-empty">Loading payments…</div>
