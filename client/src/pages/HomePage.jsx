@@ -232,6 +232,69 @@ const HomePage = () => {
         </div>
       </section>
 
+      {/* ── Differentiators ──────────────────────────────────── */}
+      <section className="differentiators-section">
+        <div className="diff-inner">
+          <div className="diff-header">
+            <div className="diff-eyebrow">Why RideFlow</div>
+            <h2 className="diff-heading">What sets us apart</h2>
+            <p className="diff-sub">
+              Built around trust, transparency, and real user control — not growth at all costs.
+            </p>
+          </div>
+          <div className="diff-grid">
+            <div className="diff-card">
+              <div className="diff-num">01</div>
+              <h3>No surge pricing, ever</h3>
+              <p>
+                Fixed model: base fare plus distance. The full cost is shown before you confirm.
+                No demand multipliers, no unexplained spikes. Competitors optimize for revenue —
+                we optimize for predictability.
+              </p>
+            </div>
+            <div className="diff-card">
+              <div className="diff-num">02</div>
+              <h3>Real safety control</h3>
+              <p>
+                Half our full-time driver fleet is female — 5 out of 10. Every driver is
+                background-checked. You can choose a driver that matches your comfort level.
+                That is actual control, not just a policy statement.
+              </p>
+            </div>
+            <div className="diff-card">
+              <div className="diff-num">03</div>
+              <h3>Transparent fare breakdown</h3>
+              <p>
+                Base rate, distance, and service fee shown individually before you book.
+                No hidden charges. No algorithmic price adjustments happening behind the scenes.
+                What you see is what you pay.
+              </p>
+            </div>
+            <div className="diff-card">
+              <div className="diff-num">04</div>
+              <h3>Purpose-built roles</h3>
+              <p>
+                A clear separation between rider, driver, and admin means fewer clicks and less
+                noise. Faster decisions at every level. Competitors keep adding features —
+                we reduce friction instead.
+              </p>
+            </div>
+            <div className="diff-card diff-card-full">
+              <div className="diff-num">05</div>
+              <h3>Built for trust, not volume</h3>
+              <p>
+                RideFlow is not designed to maximize ride volume at the expense of user experience.
+                Surge pricing removed. Fare transparency enforced. Safety control built in.
+                App complexity reduced. You know exactly what you are paying, who is driving, and why.
+                That is the one-line difference: a rideshare platform that replaces unpredictable pricing
+                and limited safety control with transparent fares, real driver choice, and a system
+                users actually understand.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* ── Testimonials ──────────────────────────────────────── */}
       <section className="testimonials-section">
         <h2 className="testimonials-heading">What riders &amp; drivers are saying</h2>

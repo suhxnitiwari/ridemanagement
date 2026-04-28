@@ -199,6 +199,13 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
   const [loadingActive,           setLoadingActive]           = useState(false);
   const [activeError,             setActiveError]             = useState('');
 
+  const [showSafety,          setShowSafety]          = useState(false);
+  const [safetyView,          setSafetyView]          = useState('main');
+  const [reportText,          setReportText]          = useState('');
+  const [reportSent,          setReportSent]          = useState(false);
+  const [copiedInfo,          setCopiedInfo]          = useState(false);
+  const [emergencyCancelling, setEmergencyCancelling] = useState(false);
+
   const baseFare   = 2.50;
   const PER_MILE   = 1.75;
   const distFare   = routeInfo ? routeInfo.miles * PER_MILE : 0;
@@ -284,6 +291,31 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
       setAiLoading(false);
     }
   };
+
+  const handleEmergencyCancel = async () => {
+    if (!activeRide) return;
+    setEmergencyCancelling(true);
+    try {
+      await ridesApi.update(activeRide.ride_id, { status: 'cancelled' });
+      setActiveRide(null);
+      setShowSafety(false);
+      setRides([]);
+    } catch (err) {
+      console.error('Emergency cancel failed:', err.response?.data || err.message);
+    } finally {
+      setEmergencyCancelling(false);
+    }
+  };
+
+  const rideInfoText = activeRide ? [
+    `Rider:       ${user?.firstName || ''} ${user?.lastName || ''}`.trim(),
+    `Driver:      ${activeDriver ? `${activeDriver.first_name} ${activeDriver.last_name}` : 'Not yet assigned'}`,
+    `Vehicle:     ${activeDriver ? `${activeDriver.vehicle_model} · ${activeDriver.license_plate}` : '—'}`,
+    `Pickup:      ${activeRide.pickup_location}`,
+    `Destination: ${activeRide.dropoff_location}`,
+    `Status:      ${activeRide.status.replace(/_/g, ' ')}`,
+    `Ride ID:     R${activeRide.ride_id}`,
+  ].join('\n') : '';
 
   /* auto-trigger suggestions as user types a dropoff */
   useEffect(() => {
@@ -703,6 +735,19 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
                 )}
               </div>
               {activeRide && (
+                <button
+                  className="btn-safety-help"
+                  onClick={() => {
+                    setShowSafety(true);
+                    setSafetyView('main');
+                    setReportSent(false);
+                    setCopiedInfo(false);
+                  }}
+                >
+                  Safety Help
+                </button>
+              )}
+              {activeRide && (
                 <p className="active-help-note">
                   Cancellations after driver acceptance may incur a $2.00 fee.
                 </p>
@@ -866,6 +911,102 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
                 {cancelling ? 'Cancelling…' : 'Confirm Cancel ($2.00)'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Safety Help Modal ───────────────────────────────────────── */}
+      {showSafety && (
+        <div className="modal-overlay" onClick={() => setShowSafety(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Safety Help</h2>
+              <button className="modal-close" onClick={() => setShowSafety(false)}>×</button>
+            </div>
+
+            {safetyView === 'main' && (
+              <>
+                <p className="safety-modal-message">
+                  If you feel unsafe, contact emergency services immediately. RideFlow can help
+                  you share ride details and report the issue.
+                </p>
+                <div className="safety-actions">
+                  <a href="tel:911" className="safety-btn safety-btn-emergency">
+                    Call 911
+                  </a>
+                  <button className="safety-btn safety-btn-secondary" onClick={() => setSafetyView('share')}>
+                    Share ride details
+                  </button>
+                  <button className="safety-btn safety-btn-secondary" onClick={() => setSafetyView('report')}>
+                    Report driver concern
+                  </button>
+                  <button
+                    className="safety-btn safety-btn-cancel-ride"
+                    onClick={handleEmergencyCancel}
+                    disabled={emergencyCancelling || !activeRide}
+                  >
+                    {emergencyCancelling ? 'Cancelling…' : 'Cancel ride immediately'}
+                  </button>
+                </div>
+              </>
+            )}
+
+            {safetyView === 'share' && (
+              <>
+                <button className="safety-back-btn" onClick={() => setSafetyView('main')}>
+                  Back
+                </button>
+                <p className="safety-modal-message">
+                  Copy the details below and share them with someone you trust.
+                </p>
+                <pre className="safety-share-block">{rideInfoText}</pre>
+                <div className="modal-footer">
+                  <button
+                    className="btn btn-primary"
+                    onClick={() => { navigator.clipboard?.writeText(rideInfoText); setCopiedInfo(true); }}
+                  >
+                    {copiedInfo ? 'Copied!' : 'Copy to clipboard'}
+                  </button>
+                </div>
+              </>
+            )}
+
+            {safetyView === 'report' && (
+              <>
+                <button className="safety-back-btn" onClick={() => setSafetyView('main')}>
+                  Back
+                </button>
+                {reportSent ? (
+                  <p className="safety-report-sent">
+                    Your concern has been recorded. Our team will review it shortly.
+                  </p>
+                ) : (
+                  <>
+                    <p className="safety-modal-message">
+                      Describe your concern and we will follow up.
+                    </p>
+                    <div className="form-group safety-report-group">
+                      <textarea
+                        className="safety-report-textarea"
+                        placeholder="Describe your concern…"
+                        value={reportText}
+                        onChange={(e) => setReportText(e.target.value)}
+                        rows={4}
+                      />
+                    </div>
+                    <div className="modal-footer">
+                      <button
+                        className="btn btn-primary"
+                        disabled={!reportText.trim()}
+                        onClick={() => setReportSent(true)}
+                      >
+                        Submit report
+                      </button>
+                    </div>
+                  </>
+                )}
+              </>
+            )}
           </div>
         </div>
       )}
