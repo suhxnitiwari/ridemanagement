@@ -1,6 +1,6 @@
 # RideFlow
 
-A role-based rideshare platform with separate authenticated portals for riders, drivers, and admins. Riders book trips with real-time fare estimation and an AI destination assistant; drivers manage and complete assigned rides; admins run full CRUD on the rider and driver roster.
+A role-based rideshare platform with separate authenticated portals for riders, drivers, and admins. Riders book trips with real-time fare estimation, an AI destination assistant, and a built-in safety suite; drivers manage and complete assigned rides and track earnings; admins run full CRUD on all rides, riders, and drivers from a live stats dashboard.
 
 **Production:** [rideflow-frontend.onrender.com](https://rideflow-frontend.onrender.com) &nbsp;·&nbsp; **API:** [rideflow-server.onrender.com](https://rideflow-server.onrender.com)
 
@@ -10,19 +10,71 @@ A role-based rideshare platform with separate authenticated portals for riders, 
 
 ---
 
+## Project Requirements Coverage (MIS 372T)
+
+| Rubric Item | How It's Met |
+|---|---|
+| React + Vite, component-based | React 18 + Vite; `/components` dir with 11 reusable components |
+| Multi-page with navigation | React Router v6; dedicated portals for rider, driver, admin |
+| Modern UI | Custom dark theme, magenta/purple palette, Leaflet maps, responsive layout |
+| ES6 throughout | Arrow functions, destructuring, async/await, modules everywhere |
+| State management | `useState` / `useEffect`; Clerk session state |
+| Security: elevated login for admin CRUD | Clerk roles (`rider`, `driver`, `admin`); `requireAdmin` / `requireDriver` middleware |
+| Row-level auth | Riders see only their own rides/payments (`WHERE rider_id = ?`); drivers see their assigned rides |
+| Node.js + Express backend | `server/index.js` with Express 4 |
+| Full CRUD routes | `/api/rides`, `/api/riders`, `/api/drivers`, `/api/payments` — GET/POST/PUT/PATCH/DELETE |
+| ORM | Sequelize 6 with `underscored: true` models |
+| PostgreSQL database, seeded | Neon serverless PostgreSQL + `server/seed.js` |
+| Deployed publicly | Render static site (frontend) + Render web service (backend) |
+| Incorporate AI (Azure Foundry) | Azure OpenAI GPT-4o: AI Destination Assistant (uses ride destination from DB) + RideFlow Assistant chatbot |
+| Strata platform chatbot | Strata widget in `index.html` with custom knowledge base (150+ Q&A pairs) |
+
+---
+
 ## Tech Stack
 
 | Layer | Technology |
 |---|---|
-| Frontend | React 18 + Vite, React Router, Leaflet / react-leaflet |
+| Frontend | React 18 + Vite, React Router v6, Leaflet / react-leaflet |
 | Auth | Clerk (JWTs, `publicMetadata` role storage) |
 | HTTP client | Axios with global `Authorization` header sync |
 | Backend | Node.js 18, Express 4 |
 | ORM | Sequelize 6 (`sync({ alter: true })`) |
 | Database | Neon serverless PostgreSQL (SSL, us-east-1) |
-| AI | Azure OpenAI GPT-4o via Azure AI Foundry |
+| AI — Destination Assistant | Azure OpenAI GPT-4o via Azure AI Foundry (destination suggestions from ride data) |
+| AI — RideFlow Assistant | Azure OpenAI GPT-4o with RideFlow knowledge system prompt; multi-turn chat with conversation history |
+| AI — Chatbot | Strata platform (`strata.fyi`) with custom 150+ Q&A knowledge base |
 | Geocoding | Photon (autocomplete), Nominatim (geocode), OSRM (routing) |
 | Deployment | Render (static site + web service) |
+
+---
+
+## Features
+
+### Rider Portal
+- Book rides with real-time address autocomplete + OSRM driving route on Leaflet map
+- Full fare breakdown before confirming: base $2.50 + $1.75/mi + $1.20 service fee + 8.25% TX tax, min $5.00
+- Live ride tracking with 5-step status bar (Requested → Accepted → En Route → In Progress → Completed)
+- Safety Help modal: Call 911, share ride details to clipboard, report driver, emergency cancel
+- AI Destination Assistant powered by Azure OpenAI — suggests things to do near drop-off
+- Ride history, transactions, and profile with ride preferences (temperature, music, conversation)
+
+### Driver Portal
+- Find & accept available ride requests; complete or cancel active rides
+- Dashboard with today/week/month/year earnings (65% driver cut), weekly bar chart, completion rate
+- My Rides history + detailed earnings payment records
+
+### Admin Panel
+- Live platform stats: total rides, revenue, active requests, driver count, average fare
+- Rides by day and revenue by day bar charts; ride status distribution; platform health metrics
+- Top 5 drivers leaderboard
+- Full CRUD on all rides (search, filter by status, edit, delete)
+- Full CRUD on all drivers (search, sort by rating/revenue, edit, remove)
+
+### AI Features
+- **RideFlow Assistant** — floating chat widget (🚗) powered by Azure OpenAI with full RideFlow knowledge system prompt; maintains conversation history; 6 quick-start chips
+- **AI Destination Assistant** — uses the ride's drop-off location (from database) to generate activity suggestions via Azure OpenAI
+- **Strata chatbot** — context-based chatbot with 150+ curated Q&A pairs covering booking, pricing, safety, driver info, and troubleshooting
 
 ---
 
@@ -59,10 +111,10 @@ Vite proxies all `/api/*` requests to `localhost:3001` — no CORS setup needed 
 
 | Variable | Required | Description |
 |---|---|---|
-| `DATABASE_URL` | Yes | Full Neon connection string, e.g. `postgresql://user:pass@host/db?sslmode=require&channel_binding=require` |
+| `DATABASE_URL` | Yes | Full Neon connection string, e.g. `postgresql://user:pass@host/db?sslmode=require` |
 | `DB_SSL` | Yes | `true` for Neon / any SSL-required host |
 | `PORT` | No | Server port. Defaults to `3001` |
-| `CLIENT_ORIGIN` | Yes | Comma-separated allowed CORS origins, e.g. `http://localhost:5173,https://rideflow-frontend.onrender.com` |
+| `CLIENT_ORIGIN` | Yes | Comma-separated allowed CORS origins |
 | `CLERK_SECRET_KEY` | Yes | Clerk backend secret key (`sk_live_…` or `sk_test_…`) |
 | `AZURE_AI_KEY` | Yes | Azure OpenAI API key |
 | `AZURE_OPENAI_ENDPOINT` | Yes | e.g. `https://your-resource.openai.azure.com` |
@@ -72,7 +124,7 @@ Vite proxies all `/api/*` requests to `localhost:3001` — no CORS setup needed 
 
 | Variable | Required | Description |
 |---|---|---|
-| `VITE_API_URL` | No | Full API base URL, e.g. `https://rideflow-server.onrender.com/api`. Falls back to `/api` (Vite proxy) if unset |
+| `VITE_API_URL` | No | Full API base URL. Falls back to `/api` (Vite proxy) if unset |
 | `VITE_CLERK_PUBLISHABLE_KEY` | Yes | Clerk publishable key (`pk_live_…` or `pk_test_…`) |
 
 ---
@@ -87,19 +139,19 @@ All protected endpoints require `Authorization: Bearer <clerk-jwt>`.
 | GET | `/` | None | Health check |
 | GET | `/api/auth/me` | Any | Current user Clerk profile + role |
 | GET | `/api/riders` | Admin | List riders (`?search=`) |
-| GET | `/api/riders/me` | Rider | Logged-in user's rider record (auto-links `clerk_user_id`) |
+| GET | `/api/riders/me` | Rider | Logged-in user's rider record |
 | GET | `/api/riders/:id` | Any | Single rider |
 | POST | `/api/riders` | Admin | Create rider |
 | PUT | `/api/riders/:id` | Any | Update rider |
 | DELETE | `/api/riders/:id` | Admin | Soft delete |
 | GET | `/api/drivers` | Admin | List drivers (`?search=`) |
-| GET | `/api/drivers/me` | Driver | Logged-in user's driver record (auto-links `clerk_user_id`) |
+| GET | `/api/drivers/me` | Driver | Logged-in user's driver record |
 | GET | `/api/drivers/stats` | Driver | Per-driver ride and revenue stats |
 | GET | `/api/drivers/:id` | Any | Single driver |
 | POST | `/api/drivers` | Admin | Create driver |
 | PUT | `/api/drivers/:id` | Driver/Admin | Update driver |
 | DELETE | `/api/drivers/:id` | Admin | Soft delete |
-| GET | `/api/rides` | Any | Riders see own rows; drivers/admins see all. `?status=`, `?statuses=a,b`, `?search=` |
+| GET | `/api/rides` | Any | Riders see own rows; drivers/admins see all |
 | POST | `/api/rides` | Rider | Create ride; `rider_id` resolved server-side from JWT |
 | PUT | `/api/rides/:id` | Driver/Admin | Update ride |
 | PATCH | `/api/rides/:id/status` | Driver/Admin | Status-only update |
@@ -109,16 +161,40 @@ All protected endpoints require `Authorization: Bearer <clerk-jwt>`.
 | PUT | `/api/payments/:id` | Admin | Update payment |
 | DELETE | `/api/payments/:id` | Admin | Delete payment |
 | POST | `/api/ai/destination-suggestions` | Rider | GPT-4o activity suggestions for a destination |
+| POST | `/api/ai/chat` | Any | RideFlow Assistant — multi-turn chat with RideFlow knowledge system prompt |
 
 ---
 
-## Authentication
+## Authentication & Security
 
 Roles are stored in **Clerk `publicMetadata`** (`"role": "rider" | "driver" | "admin"`). Role assignment happens at `/onboarding` after sign-up via a server-side Clerk SDK call — the client cannot self-assign a role.
 
 Every protected route independently fetches the user from Clerk on each request and checks the role claim — the JWT payload alone is never trusted for authorization.
 
-The client refreshes the Clerk token every 55 seconds via `getToken()` and updates the global Axios `Authorization` header. Sensitive calls (book ride, AI suggestions) trigger an additional pre-call refresh to prevent stale-JWT 401s.
+**Row-level security:** Riders can only read and modify their own ride and payment records. The rides controller filters `WHERE rider_id = <authenticated rider>` for all non-admin requests. Drivers can only update rides assigned to them.
+
+The client refreshes the Clerk token every 55 seconds via `getToken()` and updates the global Axios `Authorization` header.
+
+---
+
+## Database Schema
+
+Managed by Sequelize on Neon PostgreSQL. All changes are applied non-destructively via `sync({ alter: true })` on startup.
+
+```
+riders    (rider_id, first_name, last_name, email, phone_number,
+           default_payment_method, rating, clerk_user_id, active, created_at, updated_at)
+
+drivers   (driver_id, first_name, last_name, email, phone_number,
+           license_plate, vehicle_model, vehicle_color, status, rating,
+           clerk_user_id, created_at, updated_at)
+
+rides     (ride_id, rider_id → riders, driver_id → drivers,
+           pickup_location, dropoff_location, status, fare, created_at, updated_at)
+
+payments  (payment_id, ride_id → rides, rider_id → riders,
+           amount, payment_method, status, card_last_four, created_at, updated_at)
+```
 
 ---
 
@@ -132,7 +208,6 @@ Both services run on [Render](https://render.com).
 |---|---|
 | Build command | `cd server && npm install` |
 | Start command | `cd server && node index.js` |
-| Root directory | *(repo root)* |
 
 **Frontend — Static Site**
 
@@ -140,31 +215,8 @@ Both services run on [Render](https://render.com).
 |---|---|
 | Build command | `cd client && npm install && npm run build` |
 | Publish directory | `client/dist` |
-| Root directory | *(repo root)* |
 
-Set all `server/.env` variables in Render's environment panel for the backend service. Set `VITE_API_URL` and `VITE_CLERK_PUBLISHABLE_KEY` for the static site — Vite inlines `VITE_*` vars at build time, so changes require a redeploy.
-
-> **Cold-start note:** Render free-tier services sleep after 15 minutes of inactivity. The first request after sleep can take 30–60 s. The app surfaces a visible error banner prompting the user to retry.
-
----
-
-## Database Schema
-
-Managed by Sequelize on Neon PostgreSQL. All changes are applied non-destructively via `sync({ alter: true })` on startup.
-
-```
-riders    (rider_id, first_name, last_name, email, phone_number,
-           default_payment_method, rating, clerk_user_id, active, created_at, updated_at)
-
-drivers   (driver_id, first_name, last_name, email, phone_number,
-           license_plate, vehicle_model, status, rating, clerk_user_id, created_at, updated_at)
-
-rides     (ride_id, rider_id → riders, driver_id → drivers,
-           pickup_location, dropoff_location, status, fare, created_at, updated_at)
-
-payments  (payment_id, ride_id → rides, rider_id → riders,
-           amount, payment_method, status, created_at, updated_at)
-```
+> **Cold-start note:** Render free-tier services sleep after 15 minutes of inactivity. The first request after sleep can take 30–60 s.
 
 ---
 
