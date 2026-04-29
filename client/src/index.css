@@ -3974,6 +3974,25 @@ tbody tr:nth-child(even):hover { background: var(--bg-card-hover); }
 }
 .chat-new-btn:hover { background: rgba(255,255,255,0.3); }
 
+.chat-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  padding: 0.25rem 0.5rem 0.5rem;
+}
+.chat-chip {
+  background: rgba(180,100,255,0.12);
+  border: 1px solid rgba(180,100,255,0.35);
+  color: #c084fc;
+  border-radius: 999px;
+  padding: 0.3rem 0.75rem;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: background 0.15s;
+  white-space: nowrap;
+}
+.chat-chip:hover { background: rgba(180,100,255,0.25); }
+
 .chat-messages {
   flex: 1;
   overflow-y: auto;

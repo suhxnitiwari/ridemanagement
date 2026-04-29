@@ -53,6 +53,8 @@ export const paymentsApi = {
 export const aiApi = {
   getDestinationSuggestions: (destination) =>
     api.post('/ai/destination-suggestions', { destination }),
+  chat: (messages) =>
+    api.post('/ai/chat', { messages }),
 };
 
 export const statsApi = {

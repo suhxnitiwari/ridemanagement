@@ -2,43 +2,60 @@ import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@clerk/react';
 import { aiApi, setAuthToken } from '../services/api';
 
-const WELCOME = 'Hi! I\'m your RideFlow Trip Assistant 🗺️\nAsk me about things to do at your destination, local tips, restaurants, attractions — anything about your trip!';
+const WELCOME = "Hi! I'm the RideFlow Assistant. Ask me anything about booking rides, pricing, payments, safety, becoming a driver, or your account.";
+
+const CHIPS = [
+  'How do I book a ride?',
+  'How is my fare calculated?',
+  'Is there a cancellation fee?',
+  'How do I become a driver?',
+  'What if I feel unsafe?',
+  'What payment methods work?',
+];
 
 const ChatWidget = ({ onClose }) => {
   const { getToken } = useAuth();
-  const [messages,    setMessages]    = useState([{ role: 'assistant', text: WELCOME }]);
+  const [messages,    setMessages]    = useState([{ role: 'assistant', content: WELCOME }]);
   const [input,       setInput]       = useState('');
-  const [chatLoading, setChatLoading] = useState(false);
+  const [loading,     setLoading]     = useState(false);
+  const [chipsShown,  setChipsShown]  = useState(true);
   const bottomRef = useRef(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, chatLoading]);
+  }, [messages, loading]);
 
-  const send = async () => {
-    const text = input.trim();
-    if (!text || chatLoading) return;
+  const send = async (text) => {
+    const trimmed = (text || input).trim();
+    if (!trimmed || loading) return;
     setInput('');
-    setMessages((prev) => [...prev, { role: 'user', text }]);
-    setChatLoading(true);
+    setChipsShown(false);
+    const updated = [...messages, { role: 'user', content: trimmed }];
+    setMessages(updated);
+    setLoading(true);
     try {
       const token = await getToken();
       if (token) setAuthToken(token);
-      const res = await aiApi.getDestinationSuggestions(text);
-      setMessages((prev) => [...prev, { role: 'assistant', text: res.data?.suggestions || 'No response. Try again.' }]);
+      const res = await aiApi.chat(updated);
+      const reply = res.data?.reply || 'No response — please try again.';
+      setMessages((prev) => [...prev, { role: 'assistant', content: reply }]);
     } catch {
-      setMessages((prev) => [...prev, { role: 'assistant', text: 'Something went wrong — please try again.' }]);
+      setMessages((prev) => [...prev, { role: 'assistant', content: 'Something went wrong — please try again.' }]);
     } finally {
-      setChatLoading(false);
+      setLoading(false);
     }
   };
 
-  const newChat = () => { setMessages([{ role: 'assistant', text: WELCOME }]); setInput(''); };
+  const newChat = () => {
+    setMessages([{ role: 'assistant', content: WELCOME }]);
+    setInput('');
+    setChipsShown(true);
+  };
 
   return (
     <div className="chat-panel">
       <div className="strata-panel-header">
-        <span>✦ Trip Assistant</span>
+        <span>🚗 RideFlow Assistant</span>
         <div className="chat-header-actions">
           <button className="chat-new-btn" onClick={newChat} title="Start a new conversation">↺ New chat</button>
           <button className="strata-panel-close" onClick={onClose}>×</button>
@@ -48,13 +65,22 @@ const ChatWidget = ({ onClose }) => {
       <div className="chat-messages">
         {messages.map((m, i) => (
           <div key={i} className={`chat-msg chat-msg-${m.role}`}>
-            {m.role === 'assistant' && <div className="chat-msg-avatar">✦</div>}
-            <div className="chat-msg-bubble">{m.text}</div>
+            {m.role === 'assistant' && <div className="chat-msg-avatar">🚗</div>}
+            <div className="chat-msg-bubble">{m.content}</div>
           </div>
         ))}
-        {chatLoading && (
+
+        {chipsShown && messages.length === 1 && (
+          <div className="chat-chips">
+            {CHIPS.map((c) => (
+              <button key={c} className="chat-chip" onClick={() => send(c)}>{c}</button>
+            ))}
+          </div>
+        )}
+
+        {loading && (
           <div className="chat-msg chat-msg-assistant">
-            <div className="chat-msg-avatar">✦</div>
+            <div className="chat-msg-avatar">🚗</div>
             <div className="chat-msg-bubble chat-typing">
               <span /><span /><span />
             </div>
@@ -69,11 +95,11 @@ const ChatWidget = ({ onClose }) => {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }}
-          placeholder="Ask about your destination…"
-          disabled={chatLoading}
+          placeholder="Ask about RideFlow…"
+          disabled={loading}
           autoFocus
         />
-        <button className="chat-send-btn" onClick={send} disabled={!input.trim() || chatLoading}>→</button>
+        <button className="chat-send-btn" onClick={() => send()} disabled={!input.trim() || loading}>→</button>
       </div>
     </div>
   );
@@ -91,9 +117,9 @@ const TripAssistant = () => {
       <button
         className={`strata-fab${isOpen ? ' strata-fab-open' : ''}`}
         onClick={() => setIsOpen((o) => !o)}
-        aria-label="Trip assistant chat"
+        aria-label="RideFlow assistant chat"
       >
-        {isOpen ? '×' : '💬'}
+        {isOpen ? '×' : '🚗'}
       </button>
     </div>
   );
