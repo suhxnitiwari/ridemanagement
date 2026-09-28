@@ -242,4 +242,4 @@ Both services run on [Render](https://render.com).
 
 **University:** The University of Texas at Austin, McCombs School of Business  
 **Course:** MIS 372T — Full-Stack Web Application Development, Spring 2026  
-**Author:** Suhani Tiwari · [github.com/suhanitiwari0306](https://github.com/suhanitiwari0306)
+**Author:** Suhani Tiwari · [github.com/suhxnitiwari](https://github.com/suhxnitiwari)
