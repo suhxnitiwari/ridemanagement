@@ -179,6 +179,10 @@ Every status change goes through one set of rules in `server/utils/rideLifecycle
 
 Nothing is charged when a ride is requested. Each payment records what it was for (`fare` or `cancellation_fee`), and every payment opens as a printable receipt for the rider and in the admin **Payments** tab, where admins can mark it refunded or failed.
 
+## Tests
+
+`cd server && npm test` runs the ride and payment rules (33 checks) against an in-memory Postgres, so no database or Clerk account is needed: who can see and change which rides, when fares and fees are charged, and who can open which receipt.
+
 ## Authentication & Security
 
 Roles are stored in **Clerk `publicMetadata`** (`"role": "rider" | "driver" | "admin"`). Role assignment happens at `/onboarding` after sign-up via a server-side Clerk SDK call — the client cannot self-assign a role.

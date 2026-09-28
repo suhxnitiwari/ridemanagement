@@ -24,6 +24,8 @@ const isCard = (method) => method === 'credit_card' || method === 'debit_card';
 const charge = async (ride, amount, kind) => {
   if (!ride.rider_id || amount == null) return null;
   const existing = await Payment.findOne({ where: { ride_id: ride.ride_id, kind } });
+  // rides booked before this change already have a 'pending' payment from booking time: settle that one
+  if (existing?.status === 'pending') return existing.update({ status: 'completed', amount });
   if (existing) return existing;
   const rider = await Rider.findByPk(ride.rider_id);
   const method = rider?.default_payment_method || 'credit_card';
