@@ -20,7 +20,7 @@ A role-based rideshare platform with separate authenticated portals for riders, 
 | ES6 throughout | Arrow functions, destructuring, async/await, modules everywhere |
 | State management | `useState` / `useEffect`; Clerk session state |
 | Security: elevated login for admin CRUD | Clerk roles (`rider`, `driver`, `admin`); `requireAdmin` / `requireDriver` middleware |
-| Row-level auth | Riders see only their own rides/payments (`WHERE rider_id = ?`); drivers see their assigned rides |
+| Row-level auth | Riders see only their own rides, payments and receipts; drivers see only their own rides (plus open requests while Available) and payments for rides they drove; admins see everything |
 | Node.js + Express backend | `server/index.js` with Express 4 |
 | Full CRUD routes | `/api/rides`, `/api/riders`, `/api/drivers`, `/api/payments` — GET/POST/PUT/PATCH/DELETE |
 | ORM | Sequelize 6 with `underscored: true` models |
@@ -140,30 +140,44 @@ All protected endpoints require `Authorization: Bearer <clerk-jwt>`.
 | GET | `/api/auth/me` | Any | Current user Clerk profile + role |
 | GET | `/api/riders` | Admin | List riders (`?search=`) |
 | GET | `/api/riders/me` | Rider | Logged-in user's rider record |
-| GET | `/api/riders/:id` | Any | Single rider |
+| GET | `/api/riders/:id` | Admin / self / current driver | Single rider |
 | POST | `/api/riders` | Admin | Create rider |
 | PUT | `/api/riders/:id` | Any | Update rider |
 | DELETE | `/api/riders/:id` | Admin | Soft delete |
 | GET | `/api/drivers` | Admin | List drivers (`?search=`) |
 | GET | `/api/drivers/me` | Driver | Logged-in user's driver record |
-| GET | `/api/drivers/stats` | Driver | Per-driver ride and revenue stats |
-| GET | `/api/drivers/:id` | Any | Single driver |
+| GET | `/api/drivers/stats` | Admin | Per-driver ride and revenue stats |
+| PATCH | `/api/drivers/me/availability` | Driver | Go Available or Offline (`{ available: true }`) |
+| GET | `/api/drivers/:id` | Admin / self / current rider | Single driver |
 | POST | `/api/drivers` | Admin | Create driver |
 | PUT | `/api/drivers/:id` | Driver/Admin | Update driver |
 | DELETE | `/api/drivers/:id` | Admin | Soft delete |
 | GET | `/api/rides` | Any | Riders see own rows; drivers/admins see all |
 | POST | `/api/rides` | Rider | Create ride; `rider_id` resolved server-side from JWT |
-| PUT | `/api/rides/:id` | Driver/Admin | Update ride |
+| PUT | `/api/rides/:id` | Any (rules below) | Riders cancel; drivers accept → pick up → complete; admins edit anything, incl. the assigned driver |
 | PATCH | `/api/rides/:id/status` | Driver/Admin | Status-only update |
 | DELETE | `/api/rides/:id` | Admin | Cancel ride |
 | GET | `/api/payments` | Any | Own payments (rider) or all (admin) |
-| POST | `/api/payments` | Rider | Create payment |
+| POST | `/api/payments` | Admin | Manual adjustment (fares are billed automatically on completion) |
 | PUT | `/api/payments/:id` | Admin | Update payment |
 | DELETE | `/api/payments/:id` | Admin | Delete payment |
 | POST | `/api/ai/destination-suggestions` | Rider | GPT-4o activity suggestions for a destination |
 | POST | `/api/ai/chat` | Any | RideFlow Assistant — multi-turn chat with RideFlow knowledge system prompt |
 
 ---
+
+## Ride Lifecycle & Billing
+
+Every status change goes through one set of rules in `server/utils/rideLifecycle.js`:
+
+| Move | Who | What else happens |
+|---|---|---|
+| requested → accepted | An **Available** driver with no other active ride | The ride records that driver; the driver goes **on a ride** |
+| accepted → in progress | The assigned driver ("Picked up rider") | — |
+| → completed | The assigned driver or an admin | The fare is charged **once** to the rider's saved payment method; the driver is available again |
+| → cancelled | The rider, the assigned driver or an admin | If a rider cancels **after** a driver accepted, a $2.00 fee is charged (waived for safety cancellations) |
+
+Nothing is charged when a ride is requested. Each payment records what it was for (`fare` or `cancellation_fee`), and every payment opens as a printable receipt for the rider and in the admin **Payments** tab, where admins can mark it refunded or failed.
 
 ## Authentication & Security
 

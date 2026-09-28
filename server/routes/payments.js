@@ -5,7 +5,7 @@ const { requireAuth, requireAdmin } = require('../middleware/requireAuth');
 
 router.get('/',    requireAuth, getAllPayments);
 router.get('/:id', requireAuth, getPaymentById);
-router.post('/',   requireAuth, createPayment);
+router.post('/',   requireAdmin, createPayment);   // normal charges are created when a ride completes
 router.put('/:id', requireAdmin, updatePayment);
 router.delete('/:id', requireAdmin, deletePayment);
 

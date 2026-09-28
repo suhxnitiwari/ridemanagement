@@ -1,4 +1,5 @@
-const { Rider } = require('../models');
+const { Rider, Ride } = require('../models');
+const { getIdentity } = require('../utils/identity');
 const { Op } = require('sequelize');
 const { clerkClient } = require('@clerk/express');
 
@@ -54,6 +55,15 @@ const getRiderById = async (req, res) => {
     if (!rider) {
       return res.status(404).json({ success: false, message: 'Rider not found' });
     }
+    // admins, the rider themselves, or the driver currently driving them
+    const { role, rider: self, driver } = await getIdentity(req);
+    let allowed = role === 'admin' || self?.rider_id === rider.rider_id;
+    if (!allowed && driver) {
+      allowed = !!(await Ride.findOne({
+        where: { rider_id: rider.rider_id, driver_id: driver.driver_id, status: ['accepted', 'en_route', 'in_progress'] },
+      }));
+    }
+    if (!allowed) return res.status(403).json({ success: false, message: 'Access denied' });
     res.json({ success: true, data: rider });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

@@ -1,6 +1,7 @@
 const { Driver, Ride } = require('../models');
 const { Op } = require('sequelize');
 const { clerkClient } = require('@clerk/express');
+const { getIdentity } = require('../utils/identity');
 
 // GET /api/drivers/me
 const getMyDriver = async (req, res) => {
@@ -45,11 +46,19 @@ const getAllDrivers = async (req, res) => {
   }
 };
 
-// GET /api/drivers/:id
+// GET /api/drivers/:id — admins, the driver themselves, or a rider whose current ride this driver accepted
 const getDriverById = async (req, res) => {
   try {
     const driver = await Driver.findByPk(req.params.id);
     if (!driver) return res.status(404).json({ success: false, message: 'Driver not found' });
+    const { role, rider, driver: self } = await getIdentity(req);
+    let allowed = role === 'admin' || self?.driver_id === driver.driver_id;
+    if (!allowed && rider) {
+      allowed = !!(await Ride.findOne({
+        where: { rider_id: rider.rider_id, driver_id: driver.driver_id, status: ['accepted', 'en_route', 'in_progress'] },
+      }));
+    }
+    if (!allowed) return res.status(403).json({ success: false, message: 'Access denied' });
     res.json({ success: true, data: driver });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -99,9 +108,13 @@ const updateDriver = async (req, res) => {
       }
     }
 
-    const { first_name, last_name, email, phone_number, license_plate, vehicle_model, status, rating } = req.body;
+    const { first_name, last_name, email, phone_number, license_plate, vehicle_model, vehicle_color } = req.body;
+    // only admins can change a driver's rating or status (drivers use PATCH /drivers/me/availability)
+    const status = isAdmin ? req.body.status : undefined;
+    const rating = isAdmin ? req.body.rating : undefined;
 
     await driver.update({
+      vehicle_color:  vehicle_color  ?? driver.vehicle_color,
       first_name:     first_name     ?? driver.first_name,
       last_name:      last_name      ?? driver.last_name,
       email:          email          ?? driver.email,
@@ -175,4 +188,26 @@ const getDriverStats = async (req, res) => {
   }
 };
 
-module.exports = { getAllDrivers, getMyDriver, getDriverById, createDriver, updateDriver, deleteDriver, getDriverStats };
+// PATCH /api/drivers/me/availability  { available: true | false }
+// Going Available puts the driver in the pool for open requests; Offline hides them.
+const setMyAvailability = async (req, res) => {
+  try {
+    const { userId } = req.auth;
+    let driver = await Driver.findOne({ where: { clerk_user_id: userId } });
+    if (!driver) {
+      const clerkUser = await clerkClient.users.getUser(userId);
+      const email = clerkUser.emailAddresses?.[0]?.emailAddress;
+      if (email) driver = await Driver.findOne({ where: { email } });
+      if (driver) await driver.update({ clerk_user_id: userId });
+    }
+    if (!driver) return res.status(404).json({ success: false, message: 'Driver profile not found' });
+    if (driver.status === 'inactive') return res.status(403).json({ success: false, message: 'This driver account is deactivated' });
+    if (driver.status === 'on_ride') return res.status(409).json({ success: false, message: 'Finish your current ride first' });
+    await driver.update({ status: req.body.available ? 'available' : 'offline' });
+    res.json({ success: true, data: driver });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+module.exports = { getAllDrivers, getMyDriver, getDriverById, createDriver, updateDriver, deleteDriver, getDriverStats, setMyAvailability };

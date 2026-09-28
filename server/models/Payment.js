@@ -33,8 +33,15 @@ const Payment = sequelize.define('Payment', {
     allowNull: false,
     defaultValue: 'completed',
     validate: {
-      isIn: [['pending', 'completed', 'refunded']],
+      isIn: [['pending', 'completed', 'failed', 'refunded']],
     },
+  },
+  // what the charge was for: the ride fare, or the fee for cancelling after a driver accepted
+  kind: {
+    type: DataTypes.STRING,
+    allowNull: false,
+    defaultValue: 'fare',
+    validate: { isIn: [['fare', 'cancellation_fee']] },
   },
   card_last_four: {
     type: DataTypes.STRING(4),
