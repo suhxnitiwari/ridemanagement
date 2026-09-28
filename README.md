@@ -83,8 +83,8 @@ A role-based rideshare platform with separate authenticated portals for riders, 
 **Prerequisites:** Node.js ≥ 18, a Neon (or any PostgreSQL) database, a Clerk application, an Azure OpenAI deployment.
 
 ```bash
-git clone https://github.com/suhanitiwari0306/MIS372T_Rideshare_App.git
-cd MIS372T_Rideshare_App
+git clone https://github.com/suhxnitiwari/ridemanagement.git
+cd ridemanagement
 
 # Install dependencies
 cd server && npm install
