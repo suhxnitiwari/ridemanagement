@@ -29,6 +29,7 @@ export const driversApi = {
   getMe:    ()            => api.get('/drivers/me'),
   getById:  (id)          => api.get(`/drivers/${id}`),
   getStats: ()            => api.get('/drivers/stats'),
+  setAvailability: (available) => api.patch('/drivers/me/availability', { available }),
   create:   (data)        => api.post('/drivers',       data),
   update:   (id, data)    => api.put(`/drivers/${id}`,  data),
   delete:   (id)          => api.delete(`/drivers/${id}`),
@@ -43,7 +44,7 @@ export const ridesApi = {
 };
 
 export const paymentsApi = {
-  getAll:   ()         => api.get('/payments'),
+  getAll:   (params = {}) => api.get('/payments', { params }),
   getById:  (id)       => api.get(`/payments/${id}`),
   create:   (data)     => api.post('/payments',     data),
   update:   (id, data) => api.put(`/payments/${id}`, data),

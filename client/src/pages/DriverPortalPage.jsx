@@ -19,7 +19,7 @@ const fmt = (n) => `$${n.toFixed(2)}`;
 const fmtCut = (n) => fmt(n * DRIVER_CUT);
 
 /* ── In-Progress Ride Card ─────────────────────────────────────────────────── */
-const InProgressCard = ({ ride, onComplete, onCancel, mutating }) => {
+const InProgressCard = ({ ride, onPickup, onComplete, onCancel, mutating }) => {
   if (!ride) return (
     <div className="in-progress-card in-progress-no-ride">
       No active ride right now.
@@ -48,13 +48,25 @@ const InProgressCard = ({ ride, onComplete, onCancel, mutating }) => {
           <div className="ip-distance">Ride #{ride.ride_id}</div>
         </div>
       </div>
+      {ride.Rider && (
+        <div className="ip-rider">
+          Rider: <strong>{ride.Rider.first_name} {ride.Rider.last_name?.[0]}.</strong>
+          {ride.Rider.rating && <span> · {parseFloat(ride.Rider.rating).toFixed(1)} ★</span>}
+        </div>
+      )}
       <div className="ip-progress-bar">
-        <div className="ip-progress-fill" />
+        <div className="ip-progress-fill" style={{ width: ride.status === 'in_progress' ? '70%' : '30%' }} />
       </div>
       <div className="ip-actions">
-        <button className="btn-complete" onClick={onComplete} disabled={mutating}>
-          {mutating === 'complete' ? 'Completing…' : 'Complete ride'}
-        </button>
+        {ride.status !== 'in_progress' ? (
+          <button className="btn-complete" onClick={onPickup} disabled={mutating}>
+            {mutating === 'pickup' ? 'Updating…' : 'Picked up rider'}
+          </button>
+        ) : (
+          <button className="btn-complete" onClick={onComplete} disabled={mutating}>
+            {mutating === 'complete' ? 'Completing…' : 'Complete ride'}
+          </button>
+        )}
         <button className="btn-cancel-ride" onClick={onCancel} disabled={mutating}>
           {mutating === 'cancel' ? 'Cancelling…' : 'Cancel'}
         </button>
@@ -76,7 +88,10 @@ const DriverPortalPage = ({ theme, onThemeToggle }) => {
   const [loadingPayments,setLoadingPayments]= useState(false);
   const [accepting,      setAccepting]      = useState(null);
   const [mutating,       setMutating]       = useState(null);
-  const [isAvailable,    setIsAvailable]    = useState(true);
+  const [actionError,    setActionError]    = useState('');
+  const [togglingAvail,  setTogglingAvail]  = useState(false);
+  const isAvailable = driverProfile?.status === 'available';
+  const myId = driverProfile?.driver_id;
 
   // ── Fetch driver profile + all rides on mount ──────────────────────────────
   useEffect(() => {
@@ -98,17 +113,10 @@ const DriverPortalPage = ({ theme, onThemeToggle }) => {
 
   // ── Tab-triggered fetches ──────────────────────────────────────────────────
   useEffect(() => {
-    if (activeTab === 'find') {
-      setLoadingRides(true);
-      ridesApi.getAll({ status: 'requested' })
-        .then((res) => setAvailableRides(res.data.data ?? []))
-        .catch(() => {})
-        .finally(() => setLoadingRides(false));
-    }
     if (activeTab === 'my-rides') {
       setLoadingRides(true);
       ridesApi.getAll()
-        .then((res) => setMyRides(res.data.data ?? []))
+        .then((res) => setMyRides((res.data.data ?? []).filter((r) => r.driver_id && r.driver_id === myId)))
         .catch(() => {})
         .finally(() => setLoadingRides(false));
     }
@@ -119,12 +127,40 @@ const DriverPortalPage = ({ theme, onThemeToggle }) => {
         .catch(() => {})
         .finally(() => setLoadingPayments(false));
     }
-  }, [activeTab]);
+  }, [activeTab, myId]);
+
+  // ── Find Rides: open requests, refreshed every 10 seconds while the tab is open and the driver is Available
+  useEffect(() => {
+    if (activeTab !== 'find' || !isAvailable) { setAvailableRides([]); return; }
+    let alive = true;
+    const load = (first) => {
+      if (first) setLoadingRides(true);
+      ridesApi.getAll({ status: 'requested' })
+        .then((res) => { if (alive) setAvailableRides((res.data.data ?? []).filter((r) => !r.driver_id)); })
+        .catch(() => {})
+        .finally(() => { if (alive && first) setLoadingRides(false); });
+    };
+    load(true);
+    const timer = setInterval(() => load(false), 10000);
+    return () => { alive = false; clearInterval(timer); };
+  }, [activeTab, isAvailable]);
+
+  const handleToggleAvailability = async () => {
+    if (!driverProfile || togglingAvail) return;
+    setTogglingAvail(true);
+    setActionError('');
+    try {
+      const res = await driversApi.setAvailability(!isAvailable);
+      setDriverProfile(res.data.data);
+    } catch (err) {
+      setActionError(err.response?.data?.message || 'Could not change your availability.');
+    } finally { setTogglingAvail(false); }
+  };
 
   // ── Computed earnings from real rides ──────────────────────────────────────
   const driverRides = useMemo(() => {
     if (!driverProfile) return [];
-    return allRides.filter((r) => r.driver_id === driverProfile.driver_id && r.status === 'completed' && r.fare);
+    return allRides.filter((r) => r.driver_id === myId && r.status === 'completed' && r.fare);
   }, [allRides, driverProfile]);
 
   const earningsStats = useMemo(() => {
@@ -176,7 +212,7 @@ const DriverPortalPage = ({ theme, onThemeToggle }) => {
 
   const completionRate = useMemo(() => {
     if (!driverProfile) return null;
-    const mine = allRides.filter((r) => r.driver_id === driverProfile.driver_id);
+    const mine = allRides.filter((r) => r.driver_id === myId);
     const done = mine.filter((r) => r.status === 'completed').length;
     const total = mine.filter((r) => ['completed', 'cancelled'].includes(r.status)).length;
     return total > 0 ? Math.round((done / total) * 100) : null;
@@ -185,11 +221,29 @@ const DriverPortalPage = ({ theme, onThemeToggle }) => {
   // ── Accept / Complete / Cancel ─────────────────────────────────────────────
   const handleAcceptRide = async (ride) => {
     setAccepting(ride.ride_id);
+    setActionError('');
     try {
-      await ridesApi.update(ride.ride_id, { status: 'accepted' });
+      const res = await ridesApi.update(ride.ride_id, { status: 'accepted' });
       setAvailableRides((prev) => prev.filter((r) => r.ride_id !== ride.ride_id));
-    } catch (_) {}
-    finally { setAccepting(null); }
+      setActiveRide(res.data.data);
+      setDriverProfile((d) => (d ? { ...d, status: 'on_ride' } : d));
+      setActiveTab('dashboard');
+    } catch (err) {
+      setActionError(err.response?.data?.message || 'Could not accept this ride.');
+      setAvailableRides((prev) => prev.filter((r) => r.ride_id !== ride.ride_id));
+    } finally { setAccepting(null); }
+  };
+
+  const handlePickup = async () => {
+    if (!activeRide) return;
+    setMutating('pickup');
+    setActionError('');
+    try {
+      const res = await ridesApi.update(activeRide.ride_id, { status: 'in_progress' });
+      setActiveRide(res.data.data);
+    } catch (err) {
+      setActionError(err.response?.data?.message || 'Could not update the ride.');
+    } finally { setMutating(null); }
   };
 
   const refreshRides = () => {
@@ -207,8 +261,10 @@ const DriverPortalPage = ({ theme, onThemeToggle }) => {
     try {
       await ridesApi.update(activeRide.ride_id, { status: 'completed' });
       setActiveRide(null);
+      setDriverProfile((d) => (d ? { ...d, status: 'available' } : d));
       refreshRides();
     } catch (err) {
+      setActionError(err.response?.data?.message || 'Could not update the ride.');
       console.error('Complete ride failed:', err.response?.data || err.message);
     } finally { setMutating(null); }
   };
@@ -219,8 +275,10 @@ const DriverPortalPage = ({ theme, onThemeToggle }) => {
     try {
       await ridesApi.update(activeRide.ride_id, { status: 'cancelled' });
       setActiveRide(null);
+      setDriverProfile((d) => (d ? { ...d, status: 'available' } : d));
       refreshRides();
     } catch (err) {
+      setActionError(err.response?.data?.message || 'Could not update the ride.');
       console.error('Cancel ride failed:', err.response?.data || err.message);
     } finally { setMutating(null); }
   };
@@ -237,10 +295,12 @@ const DriverPortalPage = ({ theme, onThemeToggle }) => {
   const extraPill = (
     <button
       className={`avail-pill${isAvailable ? '' : ' avail-pill-off'}`}
-      onClick={() => setIsAvailable((v) => !v)}
+      onClick={handleToggleAvailability}
+      disabled={togglingAvail || driverProfile?.status === 'on_ride'}
+      title={driverProfile?.status === 'on_ride' ? 'On a ride' : isAvailable ? 'Go offline' : 'Go available'}
     >
       <span className="live-pill-dot" />
-      {isAvailable ? 'Available' : 'Not Available'}
+      {driverProfile?.status === 'on_ride' ? 'On a Ride' : isAvailable ? 'Available' : 'Offline'}
     </button>
   );
 
@@ -257,6 +317,13 @@ const DriverPortalPage = ({ theme, onThemeToggle }) => {
         userName={userName}
         extraPill={extraPill}
       />
+
+      {actionError && (
+        <div className="inline-alert" role="alert">
+          {actionError}
+          <button type="button" onClick={() => setActionError('')} aria-label="Dismiss">×</button>
+        </div>
+      )}
 
       {/* ── Dashboard ──────────────────────────────────────────────── */}
       {activeTab === 'dashboard' && (
@@ -296,6 +363,7 @@ const DriverPortalPage = ({ theme, onThemeToggle }) => {
               <div className="section-label">Current Ride</div>
               <InProgressCard
                 ride={activeRide}
+                onPickup={handlePickup}
                 onComplete={handleCompleteRide}
                 onCancel={handleCancelRide}
                 mutating={mutating}
@@ -362,7 +430,13 @@ const DriverPortalPage = ({ theme, onThemeToggle }) => {
             <p>Open ride requests available for pickup</p>
           </div>
 
-          {loadingRides ? (
+          {!isAvailable ? (
+            <div className="no-rides-state">
+              <div className="no-rides-icon">🌙</div>
+              <h3>{driverProfile?.status === 'on_ride' ? 'You’re on a ride' : 'You’re offline'}</h3>
+              <p>{driverProfile?.status === 'on_ride' ? 'Finish your current ride to see new requests.' : 'Go Available in the top bar to start receiving ride requests.'}</p>
+            </div>
+          ) : loadingRides ? (
             <div className="table-empty">Looking for available rides…</div>
           ) : availableRides.length === 0 ? (
             <div className="no-rides-state">
@@ -380,6 +454,12 @@ const DriverPortalPage = ({ theme, onThemeToggle }) => {
                       {ride.fare && parseFloat(ride.fare) > 0 ? fmt(parseFloat(ride.fare)) : '$5.00'}
                     </span>
                   </div>
+                  {ride.Rider && (
+                    <div className="rr-rider">
+                      {ride.Rider.first_name} {ride.Rider.last_name?.[0]}.
+                      {ride.Rider.rating && <span className="rr-rating">{parseFloat(ride.Rider.rating).toFixed(1)} ★</span>}
+                    </div>
+                  )}
                   <div className="rr-stops">
                     <div className="rr-stop">
                       <div className="stop-dot-pickup" />

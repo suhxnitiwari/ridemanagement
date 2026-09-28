@@ -2,6 +2,9 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import PortalNavbar from '../components/PortalNavbar';
 import { useUser } from '@clerk/react';
 import { ridesApi, driversApi } from '../services/api';
+import RidersPage from './RidersPage';
+import { useAppContext } from '../context/AppContext';
+import AdminPayments from '../components/AdminPayments';
 
 const STATUS_OPTS = [
   { value: 'all',       label: 'All statuses' },
@@ -14,7 +17,7 @@ const ACTIVE_STATUSES = ['requested', 'accepted', 'en_route', 'in_progress'];
 const capWords = (s) =>
   s.split('_').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 
-const EMPTY_FORM = { pickup_location: '', dropoff_location: '', status: 'requested', fare: '' };
+const EMPTY_FORM = { pickup_location: '', dropoff_location: '', status: 'requested', fare: '', driver_id: '' };
 const EMPTY_DRIVER_FORM = { status: 'available', rating: '', phone_number: '', vehicle_model: '', vehicle_color: '', license_plate: '' };
 
 const DRIVER_SORT_OPTS = [
@@ -30,6 +33,8 @@ const ADMIN_TABS = [
   { id: 'dashboard', label: 'Dashboard'         },
   { id: 'rides',     label: 'Ride Management'   },
   { id: 'drivers',   label: 'Driver Management' },
+  { id: 'riders',    label: 'Rider Management'  },
+  { id: 'payments',  label: 'Payments'          },
 ];
 
 /* ── Chart components ──────────────────────────────────────────────────────── */
@@ -96,6 +101,9 @@ const AdminPage = ({ theme, onThemeToggle }) => {
   const [editingRide,  setEditingRide]  = useState(null);
   const [deletingId,   setDeletingId]   = useState(null);
   const [error,        setError]        = useState('');
+
+  /* Rider Management reuses the riders page and the app's toast messages */
+  const { addToast } = useAppContext();
 
   /* Dashboard — unfiltered full dataset */
   const [allRides, setAllRides] = useState([]);
@@ -169,6 +177,7 @@ const AdminPage = ({ theme, onThemeToggle }) => {
         dropoff_location: form.dropoff_location,
         status:           form.status,
         fare:             form.fare ? parseFloat(form.fare) : null,
+        driver_id:        form.driver_id ? Number(form.driver_id) : null,
       };
       if (editingRide) {
         const res = await ridesApi.update(editingRide.ride_id, payload);
@@ -199,7 +208,7 @@ const AdminPage = ({ theme, onThemeToggle }) => {
 
   const openEdit = (ride) => {
     setEditingRide(ride);
-    setForm({ pickup_location: ride.pickup_location, dropoff_location: ride.dropoff_location, status: ride.status, fare: ride.fare ?? '' });
+    setForm({ pickup_location: ride.pickup_location, dropoff_location: ride.dropoff_location, status: ride.status, fare: ride.fare ?? '', driver_id: ride.driver_id ?? '' });
     setError('');
     setShowCreate(true);
   };
@@ -520,7 +529,7 @@ const AdminPage = ({ theme, onThemeToggle }) => {
                   <table>
                     <thead>
                       <tr>
-                        <th>Ride ID</th><th>Date</th><th>Pickup</th><th>Dropoff</th>
+                        <th>Ride ID</th><th>Date</th><th>Rider</th><th>Driver</th><th>Pickup</th><th>Dropoff</th>
                         <th>Status</th><th>Fare</th><th>Actions</th>
                       </tr>
                     </thead>
@@ -531,6 +540,8 @@ const AdminPage = ({ theme, onThemeToggle }) => {
                           <td style={{ whiteSpace: 'nowrap', color: 'var(--text-muted)', fontSize: '0.82rem' }}>
                             {(r.created_at || r.createdAt) ? new Date(r.created_at || r.createdAt).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—'}
                           </td>
+                          <td>{r.Rider ? `${r.Rider.first_name} ${r.Rider.last_name?.[0]}.` : '—'}</td>
+                          <td>{r.Driver ? `${r.Driver.first_name} ${r.Driver.last_name?.[0]}.` : <span style={{ color: 'var(--text-muted)' }}>Unassigned</span>}</td>
                           <td>{r.pickup_location}</td>
                           <td>{r.dropoff_location}</td>
                           <td><span className={`status-badge status-${r.status}`}>{capWords(r.status)}</span></td>
@@ -621,6 +632,8 @@ const AdminPage = ({ theme, onThemeToggle }) => {
           </>
         )}
 
+        {adminTab === 'riders' && <RidersPage addToast={addToast} />}
+        {adminTab === 'payments' && <AdminPayments />}
       </div>
 
       {/* ── Edit Ride Modal ──────────────────────────────────────────────── */}
@@ -648,6 +661,17 @@ const AdminPage = ({ theme, onThemeToggle }) => {
                 <select id="cr-status" value={form.status} onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))}>
                   {['requested','accepted','en_route','in_progress','completed','cancelled'].map((s) => (
                     <option key={s} value={s}>{capWords(s)}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="form-group">
+                <label htmlFor="cr-driver">Driver</label>
+                <select id="cr-driver" value={form.driver_id} onChange={(e) => setForm((f) => ({ ...f, driver_id: e.target.value }))}>
+                  <option value="">Unassigned</option>
+                  {driverStats.filter((d) => d.status !== 'inactive').map((d) => (
+                    <option key={d.driver_id} value={d.driver_id}>
+                      {d.name} · {d.vehicle}{d.status === 'available' ? '' : ` (${capWords(d.status)})`}
+                    </option>
                   ))}
                 </select>
               </div>

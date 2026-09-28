@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { useUser, useAuth } from '@clerk/react';
 import PortalNavbar from '../components/PortalNavbar';
 import { ridersApi, ridesApi, driversApi, paymentsApi, aiApi, setAuthToken } from '../services/api';
+import ReceiptModal from '../components/ReceiptModal';
 
 const RideMap = lazy(() => import('../components/RideMap'));
 
@@ -216,6 +217,8 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
   const [pickupGeoFailed,  setPickupGeoFailed]  = useState(false);
   const [dropoffGeoFailed, setDropoffGeoFailed] = useState(false);
   const [showCancel,   setShowCancel]   = useState(false);
+  const [finishedRide, setFinishedRide] = useState(null);
+  const [receipt,      setReceipt]      = useState(null);
   const [cancelReason, setCancelReason] = useState('');
   const [cancelling,   setCancelling]   = useState(false);
 
@@ -343,7 +346,7 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
     if (!activeRide) return;
     setEmergencyCancelling(true);
     try {
-      await ridesApi.update(activeRide.ride_id, { status: 'cancelled' });
+      await ridesApi.update(activeRide.ride_id, { status: 'cancelled', reason: 'safety' });
       setActiveRide(null);
       setShowSafety(false);
       setRides([]);
@@ -385,15 +388,8 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
       const token = await getToken();
       if (token) setAuthToken(token);
       const rideRes = await ridesApi.create({ pickup_location: pickup, dropoff_location: dropoff, fare: total });
-      const newRide = rideRes.data?.data;
-      if (newRide?.ride_id) {
-        await paymentsApi.create({
-          ride_id: newRide.ride_id,
-          amount: total,
-          payment_method: riderProfile?.default_payment_method || 'credit_card',
-          status: 'pending',
-        });
-      }
+      // no charge yet: RideFlow bills the fare automatically when the driver completes the ride
+      if (!rideRes.data?.data?.ride_id) throw new Error('No ride returned');
       setBookSuccess(true);
       setPickup('');
       setDropoff('');
@@ -427,13 +423,12 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
         setActiveRide(ride);
         if (!ride) { setActiveDriver(null); return; }
 
+        setActiveDriver(ride.Driver ?? null);
         if (ride.driver_id) {
-          try {
-            const dr = await driversApi.getById(ride.driver_id);
-            setActiveDriver(dr.data?.data ?? null);
-          } catch { setActiveDriver(null); }
-        } else {
-          setActiveDriver(null);
+          // the full profile adds the driver's phone number for "Call driver"
+          driversApi.getById(ride.driver_id)
+            .then((dr) => setActiveDriver(dr.data?.data ?? ride.Driver ?? null))
+            .catch(() => {});
         }
 
         const [pc, dc] = await Promise.all([
@@ -449,6 +444,33 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
       }
     })();
   }, [activeTab]);
+
+  /* keep the active ride live: check every 8 seconds for a driver, pickup or completion */
+  useEffect(() => {
+    if (activeTab !== 'active' || !activeRide?.ride_id) return;
+    const id = activeRide.ride_id;
+    const timer = setInterval(async () => {
+      try {
+        const res = await ridesApi.getById(id);
+        const fresh = res.data?.data;
+        if (!fresh) return;
+        if (fresh.status === 'completed' || fresh.status === 'cancelled') {
+          setFinishedRide(fresh);
+          setActiveRide(null);
+          setActiveDriver(null);
+          return;
+        }
+        setActiveRide((prev) => (prev && prev.ride_id === id ? { ...prev, ...fresh } : prev));
+        if (fresh.driver_id && (!activeDriver || activeDriver.driver_id !== fresh.driver_id)) {
+          setActiveDriver(fresh.Driver ?? null);
+          driversApi.getById(fresh.driver_id)
+            .then((dr) => setActiveDriver(dr.data?.data ?? fresh.Driver ?? null))
+            .catch(() => {});
+        }
+      } catch { /* try again on the next tick */ }
+    }, 8000);
+    return () => clearInterval(timer);
+  }, [activeTab, activeRide?.ride_id, activeDriver?.driver_id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /* fetch on tab change — always refresh so data stays current */
   useEffect(() => {
@@ -726,6 +748,18 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
               <div className="p-card p-card-state">Loading your ride…</div>
             ) : activeError ? (
               <div className="p-card p-card-error">{activeError}</div>
+            ) : !activeRide && finishedRide ? (
+              <div className="p-card p-card-centered">
+                <div className="no-ride-title">{finishedRide.status === 'completed' ? 'You’ve arrived 🎉' : 'Ride cancelled'}</div>
+                <div className="no-ride-sub">
+                  {finishedRide.status === 'completed'
+                    ? `Thanks for riding with RideFlow. ${finishedRide.fare ? `$${parseFloat(finishedRide.fare).toFixed(2)} was charged to your saved payment method.` : ''}`
+                    : 'This ride was cancelled.'}
+                </div>
+                <button className="btn-portal-cta" onClick={() => { setFinishedRide(null); setActiveTab(finishedRide.status === 'completed' ? 'transactions' : 'book'); }}>
+                  {finishedRide.status === 'completed' ? 'View receipt' : 'Book a Ride'}
+                </button>
+              </div>
             ) : !activeRide ? (
               <div className="p-card p-card-centered">
                 <div className="no-ride-title">No active ride</div>
@@ -899,11 +933,11 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
 
             <div className="cancel-modal-body">
               <div className="p-card cancel-warning-card">
-                <div className="cancel-warning-title">⚠️ Cancellation fee: $2.00</div>
+                <div className="cancel-warning-title">{activeRide?.driver_id ? '⚠️ Cancellation fee: $2.00' : 'Free to cancel'}</div>
                 <div className="cancel-warning-text">
-                  {activeDriver
-                  ? `Your driver ${activeDriver.first_name} ${activeDriver.last_name[0]}. has accepted. A $2.00 fee applies.`
-                  : 'A cancellation fee may apply depending on ride status.'}
+                  {activeRide?.driver_id && activeDriver
+                  ? `Your driver ${activeDriver.first_name} ${activeDriver.last_name[0]}. has already accepted, so a $2.00 fee applies.`
+                  : 'No driver has accepted yet, so there’s no fee.'}
                 </div>
               </div>
 
@@ -935,17 +969,8 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
                   if (!activeRide) return;
                   setCancelling(true);
                   try {
-                    await ridesApi.update(activeRide.ride_id, { status: 'cancelled' });
-                    try {
-                      await paymentsApi.create({
-                        ride_id: activeRide.ride_id,
-                        amount: 2.00,
-                        payment_method: riderProfile?.default_payment_method || 'credit_card',
-                        status: 'completed',
-                      });
-                    } catch (feeErr) {
-                      console.error('Cancellation fee failed:', feeErr.response?.data || feeErr.message);
-                    }
+                    // the $2.00 fee is only charged (by the server) if a driver had already accepted
+                    await ridesApi.update(activeRide.ride_id, { status: 'cancelled', reason: cancelReason });
                     setActiveRide(null);
                     setRides([]);
                   } catch (err) {
@@ -957,7 +982,7 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
                   }
                 }}
               >
-                {cancelling ? 'Cancelling…' : 'Confirm Cancel ($2.00)'}
+                {cancelling ? 'Cancelling…' : activeRide?.driver_id ? 'Confirm Cancel ($2.00)' : 'Confirm Cancel'}
               </button>
             </div>
           </div>
@@ -1119,7 +1144,7 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
         <div className="history-page">
           <div className="page-header">
             <h1>Transactions</h1>
-            <p>Full payment history on RideFlow</p>
+            <p>Every charge on your account. Click one for its receipt.</p>
           </div>
 
           <div className="table-wrap">
@@ -1136,6 +1161,7 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
                     <th>Payment ID</th>
                     <th>Date &amp; Time</th>
                     <th>Ride</th>
+                    <th>For</th>
                     <th>Amount</th>
                     <th>Method</th>
                     <th>Status</th>
@@ -1145,12 +1171,16 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
                   {[...payments]
                     .sort((a, b) => new Date(b.created_at || b.createdAt) - new Date(a.created_at || a.createdAt))
                     .map((p) => (
-                    <tr key={p.payment_id}>
+                    <tr key={p.payment_id} className="row-clickable" tabIndex={0}
+                        onClick={() => setReceipt(p)}
+                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setReceipt(p); } }}
+                        aria-label={`Open receipt PAY-${p.payment_id}`}>
                       <td><span className="ride-id-link">PAY-{p.payment_id}</span></td>
                       <td className="td-date">
                         {(p.created_at || p.createdAt) ? new Date(p.created_at || p.createdAt).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—'}
                       </td>
                       <td><span className="ride-id-link">R{p.ride_id}</span></td>
+                      <td>{p.kind === 'cancellation_fee' ? 'Cancellation fee' : 'Ride fare'}</td>
                       <td><strong>${parseFloat(p.amount).toFixed(2)}</strong></td>
                       <td>{formatMethod(p.payment_method, p.card_last_four)}</td>
                       <td>
@@ -1281,6 +1311,7 @@ const RiderPortalPage = ({ theme, onThemeToggle }) => {
           </div>
         </div>
       )}
+      <ReceiptModal payment={receipt} onClose={() => setReceipt(null)} />
     </div>
   );
 };

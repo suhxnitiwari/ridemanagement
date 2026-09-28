@@ -4593,3 +4593,43 @@ tbody tr:nth-child(even):hover { background: var(--bg-card-hover); }
   .admin-stats-row-6 { grid-template-columns: repeat(2, 1fr); }
   .top-driver-vehicle { display: none; }
 }
+
+/* ── Polish pass: shared alert, rider line on driver cards, receipts, admin payments ── */
+.inline-alert {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  max-width: 1100px; margin: 16px auto 0; padding: 12px 16px; border-radius: 12px;
+  background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.35); color: inherit; font-size: 14px;
+}
+.inline-alert button { background: none; border: none; color: inherit; font-size: 20px; cursor: pointer; line-height: 1; }
+.rr-rider { font-size: 14px; font-weight: 600; margin: 6px 0 10px; opacity: 0.9; }
+.rr-rating { font-weight: 500; opacity: 0.75; margin-left: 8px; }
+.ip-rider { font-size: 14px; margin: 10px 0 4px; opacity: 0.85; }
+.avail-pill:disabled { cursor: default; opacity: 0.8; }
+.row-clickable { cursor: pointer; transition: background 0.15s; }
+.row-clickable:hover, .row-clickable:focus-visible { background: var(--magenta-dim); outline: none; }
+
+.receipt { max-width: 460px; }
+.receipt-body { padding: 4px 24px 8px; }
+.receipt-brand { display: flex; justify-content: space-between; align-items: center; }
+.receipt-logo { font-weight: 800; letter-spacing: -0.02em; color: var(--magenta); font-size: 1.1rem; }
+.receipt-status { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 3px 10px; border-radius: 999px; background: var(--magenta-dim); }
+.receipt-status-refunded, .receipt-status-failed { background: rgba(239, 68, 68, 0.14); }
+.receipt-total { font-size: 2.6rem; font-weight: 800; margin: 18px 0 2px; line-height: 1; }
+.receipt-sub { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 18px; }
+.receipt-route { display: grid; gap: 8px; padding: 14px 0; border-top: 1px dashed var(--border-bright); border-bottom: 1px dashed var(--border-bright); font-size: 0.9rem; }
+.receipt-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 10px; }
+.receipt-dot-pickup { background: #22c55e; }
+.receipt-dot-dropoff { background: var(--magenta); }
+.receipt-lines { margin: 14px 0 0; display: grid; gap: 8px; font-size: 0.88rem; }
+.receipt-lines > div { display: flex; justify-content: space-between; gap: 16px; }
+.receipt-lines dt { color: var(--text-muted); }
+.receipt-lines dd { margin: 0; text-align: right; }
+.receipt-line-total { border-top: 1px solid var(--border); padding-top: 10px; font-weight: 800; font-size: 1rem; }
+.receipt-footer { flex-wrap: wrap; }
+
+@media print {
+  body * { visibility: hidden; }
+  .receipt, .receipt * { visibility: visible; }
+  .receipt { position: absolute; inset: 0 auto auto 0; max-width: none; box-shadow: none; }
+  .receipt .modal-close, .receipt-footer { display: none; }
+}
