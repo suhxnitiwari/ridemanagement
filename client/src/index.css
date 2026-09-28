@@ -449,7 +449,7 @@ select option { background: var(--bg-secondary); }
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  overflow: hidden;
+  overflow-x: auto;
   box-shadow: 0 2px 16px rgba(0,0,0,0.08);
 }
 
@@ -2459,6 +2459,9 @@ tbody tr:nth-child(even):hover { background: var(--bg-card-hover); }
   padding: 1.5rem 2.5rem;
   max-width: 1600px;
   margin: 0 auto;
+  min-width: 0;   /* let wide tables scroll inside their card instead of stretching the page */
+  box-sizing: border-box;
+  width: 100%;
 }
 
 .admin-section-gap {

@@ -12,6 +12,9 @@ const TABS = [
 
 const DRIVER_CUT = 0.65;
 
+// earnings count on the day a ride was completed (its last update), not the day it was booked
+const doneAt = (r) => new Date(r.updatedAt || r.updated_at || r.createdAt);
+
 const capWords = (s) =>
   s.split('_').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 
@@ -174,10 +177,10 @@ const DriverPortalPage = ({ theme, onThemeToggle }) => {
 
     const sum = (rides) => rides.reduce((s, r) => s + parseFloat(r.fare) * DRIVER_CUT, 0);
 
-    const today = driverRides.filter((r) => new Date(r.createdAt) >= todayStart);
-    const week  = driverRides.filter((r) => new Date(r.createdAt) >= weekStart);
-    const month = driverRides.filter((r) => new Date(r.createdAt) >= monthStart);
-    const year  = driverRides.filter((r) => new Date(r.createdAt) >= yearStart);
+    const today = driverRides.filter((r) => doneAt(r) >= todayStart);
+    const week  = driverRides.filter((r) => doneAt(r) >= weekStart);
+    const month = driverRides.filter((r) => doneAt(r) >= monthStart);
+    const year  = driverRides.filter((r) => doneAt(r) >= yearStart);
 
     return {
       today:      { amount: sum(today), count: today.length },
@@ -196,7 +199,7 @@ const DriverPortalPage = ({ theme, onThemeToggle }) => {
       target.setDate(now.getDate() - now.getDay() + idx);
       const dayStr = target.toDateString();
       const amount = driverRides
-        .filter((r) => new Date(r.createdAt).toDateString() === dayStr)
+        .filter((r) => doneAt(r).toDateString() === dayStr)
         .reduce((s, r) => s + parseFloat(r.fare) * DRIVER_CUT, 0);
       return { label, amount };
     });
@@ -206,7 +209,7 @@ const DriverPortalPage = ({ theme, onThemeToggle }) => {
 
   const recentCompleted = useMemo(() =>
     [...driverRides]
-      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+      .sort((a, b) => doneAt(b) - doneAt(a))
       .slice(0, 4),
   [driverRides]);
 
