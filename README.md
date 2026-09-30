@@ -2,6 +2,10 @@
 
 A role-based rideshare platform with separate authenticated portals for riders, drivers, and admins. Riders book trips with real-time fare estimation, an AI destination assistant, and a built-in safety suite; drivers manage and complete assigned rides and track earnings; admins run full CRUD on all rides, riders, and drivers from a live stats dashboard.
 
+## Ownership
+
+© 2026 Suhani Tiwari. **All rights reserved.** This is my original work. The code is public so you can see how I build, not so you can reuse it: copying, reusing or republishing any part of it, including for a portfolio or a class assignment, is not permitted without my written permission. See [LICENSE](LICENSE).
+
 **Production:** [rideflow-frontend.onrender.com](https://rideflow-frontend.onrender.com) &nbsp;·&nbsp; **API:** [rideflow-server.onrender.com](https://rideflow-server.onrender.com)
 
 [![Node](https://img.shields.io/badge/node-%3E%3D18-brightgreen?style=flat-square)](https://nodejs.org)
