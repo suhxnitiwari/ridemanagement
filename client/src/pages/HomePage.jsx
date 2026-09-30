@@ -360,17 +360,31 @@ const HomePage = () => {
         </div>
       </section>
 
-      {/* ── Footer ────────────────────────────────────────────── */}
-      <footer className="landing-footer">
-        <div className="footer-brand">
-          <span className="footer-logo">
-            <span className="brand-ride">Ride</span>
-            <span className="brand-flow">Flow</span>
-          </span>
-          <span className="footer-course">MIS 372T · Full Stack Development · Spring 2026</span>
-        </div>
-        <div className="footer-credit">
-          Built by Suhani Tiwari &nbsp;·&nbsp; University of Texas at Austin
+      {/* ── Footer: the trip receipt for scrolling this far ─────────── */}
+      <footer className="landing-footer trip-receipt">
+        <div className="receipt">
+          <div className="receipt-head">
+            <span className="footer-logo">
+              <span className="brand-ride">Ride</span>
+              <span className="brand-flow">Flow</span>
+            </span>
+            <span className="receipt-status">Trip complete</span>
+          </div>
+          <dl className="receipt-rows">
+            <div><dt>Pickup</dt><dd>Top of this page</dd></div>
+            <div><dt>Drop-off</dt><dd>Right here</dd></div>
+            <div><dt>Driver</dt><dd>Suhani Tiwari</dd></div>
+            <div><dt>Route</dt><dd>MIS 372T, UT Austin, Spring 2026</dd></div>
+            <div className="receipt-total"><dt>Fare</dt><dd>$0.00</dd></div>
+          </dl>
+          <div className="receipt-rate">
+            <span className="receipt-rate-label">Rate your trip</span>
+            <a href="https://suhanitiwari.com" target="_blank" rel="noopener noreferrer">★ Portfolio</a>
+            <a href="https://www.linkedin.com/in/suhxnitiwari/" target="_blank" rel="noopener noreferrer">★ LinkedIn</a>
+            <a href="https://github.com/suhxnitiwari/ridemanagement" target="_blank" rel="noopener noreferrer">★ Code</a>
+            <a href="mailto:suhxnitiwari@gmail.com">★ Email</a>
+          </div>
+          <p className="receipt-legal">© 2026 Suhani Tiwari. All rights reserved.</p>
         </div>
       </footer>
     </div>

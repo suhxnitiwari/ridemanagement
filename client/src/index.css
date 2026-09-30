@@ -4636,3 +4636,20 @@ tbody tr:nth-child(even):hover { background: var(--bg-card-hover); }
   .receipt { position: absolute; inset: 0 auto auto 0; max-width: none; box-shadow: none; }
   .receipt .modal-close, .receipt-footer { display: none; }
 }
+
+/* ── Landing footer as a trip receipt ─────────────────────────────────── */
+.landing-footer.trip-receipt { justify-content: center; padding: 3rem 1.5rem; background: #ffffff; }
+.receipt { width: 100%; max-width: 440px; padding: 1.5rem 1.6rem 1.2rem; border: 1.5px dashed rgba(10,10,10,0.25); border-radius: 14px; font-family: 'DM Mono', ui-monospace, SFMono-Regular, Menlo, monospace; color: #0A0A0A; }
+.receipt-head { display: flex; align-items: center; justify-content: space-between; padding-bottom: 0.9rem; border-bottom: 1.5px dashed rgba(10,10,10,0.25); }
+.receipt-status { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: #8E2C74; }
+.receipt-rows { margin: 0.9rem 0; }
+.receipt-rows div { display: flex; justify-content: space-between; gap: 1rem; padding: 0.28rem 0; font-size: 0.8rem; }
+.receipt-rows dt { color: #6B6B6B; }
+.receipt-rows dd { margin: 0; text-align: right; }
+.receipt-total { margin-top: 0.5rem; padding-top: 0.7rem !important; border-top: 1.5px dashed rgba(10,10,10,0.25); font-weight: 700; font-size: 0.95rem !important; }
+.receipt-total dd { color: #8E2C74; }
+.receipt-rate { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 0.5rem; padding-top: 0.9rem; border-top: 1.5px dashed rgba(10,10,10,0.25); }
+.receipt-rate-label { width: 100%; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: #6B6B6B; }
+.receipt-rate a { padding: 0.3rem 0.7rem; border-radius: 999px; border: 1px solid rgba(142,44,116,0.35); color: #8E2C74; font-size: 0.78rem; text-decoration: none; }
+.receipt-rate a:hover { background: #8E2C74; color: #ffffff; }
+.receipt-legal { margin: 0.9rem 0 0; font-size: 0.68rem; color: #6B6B6B; text-align: center; }
