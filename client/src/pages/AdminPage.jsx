@@ -439,9 +439,9 @@ const AdminPage = ({ theme, onThemeToggle }) => {
                     ['Completed',   ridesByStatus.completed   || 0, '#10b981'],
                     ['Requested',   ridesByStatus.requested   || 0, '#f59e0b'],
                     ['Cancelled',   ridesByStatus.cancelled   || 0, '#ef4444'],
-                    ['In Progress', ridesByStatus.in_progress || 0, '#ec4899'],
-                    ['Accepted',    ridesByStatus.accepted    || 0, '#3b82f6'],
-                    ['En Route',    ridesByStatus.en_route    || 0, '#8b5cf6'],
+                    ['In Progress', ridesByStatus.in_progress || 0, '#B85A9C'],
+                    ['Accepted',    ridesByStatus.accepted    || 0, '#0A0A0A'],
+                    ['En Route',    ridesByStatus.en_route    || 0, '#C47AB0'],
                   ].map(([label, count, color]) => (
                     <HorizBar key={label} label={label} count={count} total={allRides.length} color={color} />
                   ))}
@@ -454,14 +454,14 @@ const AdminPage = ({ theme, onThemeToggle }) => {
                 <div className="health-metrics-list">
                   <HealthMetric label="Completion Rate"    value={`${completionRate}%`}  pct={completionRate}  color="#10b981" />
                   <HealthMetric label="Cancellation Rate"  value={`${cancelRate}%`}      pct={cancelRate}      color="#ef4444" />
-                  <HealthMetric label="Driver Availability" value={`${driverAvailPct}%`} pct={driverAvailPct}  color="#3b82f6" />
+                  <HealthMetric label="Driver Availability" value={`${driverAvailPct}%`} pct={driverAvailPct}  color="#0A0A0A" />
                 </div>
                 <div className="admin-chart-subtitle" style={{ marginTop: '1.5rem', marginBottom: '0.5rem' }}>
                   Driver status breakdown
                 </div>
                 <div className="horiz-bar-list">
                   <HorizBar label="Available" count={driverStatusCounts.available || 0} total={driverStats.length} color="#10b981" />
-                  <HorizBar label="On Ride"   count={driverStatusCounts.on_ride   || 0} total={driverStats.length} color="#ec4899" />
+                  <HorizBar label="On Ride"   count={driverStatusCounts.on_ride   || 0} total={driverStats.length} color="#B85A9C" />
                   <HorizBar label="Offline"   count={driverStatusCounts.offline   || 0} total={driverStats.length} color="#6b7280" />
                 </div>
               </div>

@@ -84,7 +84,7 @@ const RideMap = ({ pickupCoords, dropoffCoords, height = '260px' }) => {
       {pickupCoords  && <Marker position={pickupCoords}  icon={pickupIcon}  />}
       {dropoffCoords && <Marker position={dropoffCoords} icon={dropoffIcon} />}
       {routePoints && (
-        <Polyline positions={routePoints} color="#7c3aed" weight={4} />
+        <Polyline positions={routePoints} color="#8E2C74" weight={4} />
       )}
     </MapContainer>
   );
