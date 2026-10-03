@@ -1,113 +1,73 @@
 # RideFlow
 
-A role-based rideshare platform with separate authenticated portals for riders, drivers, and admins. Riders book trips with real-time fare estimation, an AI destination assistant, and a built-in safety suite; drivers manage and complete assigned rides and track earnings; admins run full CRUD on all rides, riders, and drivers from a live stats dashboard.
-
-## Ownership
-
-© 2026 Suhani Tiwari. **All rights reserved.** This is my original work. The code is public so you can see how I build, not so you can reuse it: copying, reusing or republishing any part of it, including for a portfolio or a class assignment, is not permitted without my written permission. See [LICENSE](LICENSE).
-
-**Production:** [rideflow-frontend.onrender.com](https://rideflow-frontend.onrender.com) &nbsp;·&nbsp; **API:** [rideflow-server.onrender.com](https://rideflow-server.onrender.com)
+*A full-stack rideshare platform with separate rider, driver and admin portals, built solo from the database up.*
 
 [![Node](https://img.shields.io/badge/node-%3E%3D18-brightgreen?style=flat-square)](https://nodejs.org)
 [![React](https://img.shields.io/badge/react-18-blue?style=flat-square)](https://react.dev)
 [![PostgreSQL](https://img.shields.io/badge/postgres-neon-blue?style=flat-square)](https://neon.tech)
 
----
+**Live:** [rideflow-frontend.onrender.com](https://rideflow-frontend.onrender.com) &nbsp;·&nbsp; **API:** [rideflow-server.onrender.com](https://rideflow-server.onrender.com)
+<br><sub>Both run on Render's free tier, so the first request after a quiet stretch can take 30 to 60 seconds to wake up.</sub>
 
-## Project Requirements Coverage (MIS 372T)
+## What it is
 
-| Rubric Item | How It's Met |
-|---|---|
-| React + Vite, component-based | React 18 + Vite; `/components` dir with 11 reusable components |
-| Multi-page with navigation | React Router v6; dedicated portals for rider, driver, admin |
-| Modern UI | Custom dark theme, magenta/purple palette, Leaflet maps, responsive layout |
-| ES6 throughout | Arrow functions, destructuring, async/await, modules everywhere |
-| State management | `useState` / `useEffect`; Clerk session state |
-| Security: elevated login for admin CRUD | Clerk roles (`rider`, `driver`, `admin`); `requireAdmin` / `requireDriver` middleware |
-| Row-level auth | Riders see only their own rides, payments and receipts; drivers see only their own rides (plus open requests while Available) and payments for rides they drove; admins see everything |
-| Node.js + Express backend | `server/index.js` with Express 4 |
-| Full CRUD routes | `/api/rides`, `/api/riders`, `/api/drivers`, `/api/payments` — GET/POST/PUT/PATCH/DELETE |
-| ORM | Sequelize 6 with `underscored: true` models |
-| PostgreSQL database, seeded | Neon serverless PostgreSQL + `server/seed.js` |
-| Deployed publicly | Render static site (frontend) + Render web service (backend) |
-| Incorporate AI (Azure Foundry) | Azure OpenAI GPT-4o: AI Destination Assistant (uses ride destination from DB) + RideFlow Assistant chatbot |
-| Strata platform chatbot | Strata widget in `index.html` with custom knowledge base (150+ Q&A pairs) |
+RideFlow works like a small Uber. You sign up, pick a role, and land in the portal for that role.
 
----
+- **Riders** type a pickup and drop-off with live address autocomplete, see the real driving route on a map and a full fare breakdown before booking, then follow the ride through a five-step status bar (Requested → Accepted → En Route → In Progress → Completed). A Safety Help panel can call 911, copy ride details to share, report a driver, or cancel with no fee.
+- **Drivers** go Available, accept open requests, mark pickup and drop-off, and track earnings by day, week, month and year with a weekly chart and completion rate.
+- **Admins** get a live dashboard (rides and revenue by day, status mix, top-5 driver leaderboard) and full create, edit and delete control over rides, riders, drivers and payments, including refunds.
 
-## Tech Stack
+I built it solo for MIS 372T (Full-Stack Web Application Development) at UT Austin McCombs, Spring 2026.
 
-| Layer | Technology |
-|---|---|
-| Frontend | React 18 + Vite, React Router v6, Leaflet / react-leaflet |
-| Auth | Clerk (JWTs, `publicMetadata` role storage) |
-| HTTP client | Axios with global `Authorization` header sync |
-| Backend | Node.js 18, Express 4 |
-| ORM | Sequelize 6 (`sync({ alter: true })`) |
-| Database | Neon serverless PostgreSQL (SSL, us-east-1) |
-| AI — Destination Assistant | Azure OpenAI GPT-4o via Azure AI Foundry (destination suggestions from ride data) |
-| AI — RideFlow Assistant | Azure OpenAI GPT-4o with RideFlow knowledge system prompt; multi-turn chat with conversation history |
-| AI — Chatbot | Strata platform (`strata.fyi`) with custom 150+ Q&A knowledge base |
-| Geocoding | Photon (autocomplete), Nominatim (geocode), OSRM (routing) |
-| Deployment | Render (static site + web service) |
+## How it's built
 
----
+**Roles that the client can't fake.** Auth runs on Clerk. A user's role (`rider`, `driver` or `admin`) lives in Clerk `publicMetadata` and is set by a server-side Clerk call during onboarding, so nobody can promote themselves. Every protected route looks the user up in Clerk on each request and checks the role there instead of trusting anything in the request body. The client refreshes its Clerk token every 55 seconds and keeps the Axios `Authorization` header in sync.
 
-## Features
+**Row-level security on the server.** Riders only ever see their own rides, payments and receipts. Drivers see the rides assigned to them, plus open requests while they're Available, and payments only for rides they drove. Admins see everything. The rider ID on a new ride is resolved from the signed-in user, never from the form, and a rider can't choose their own driver.
 
-### Rider Portal
-- Book rides with real-time address autocomplete + OSRM driving route on Leaflet map
-- Full fare breakdown before confirming: base $2.50 + $1.75/mi + $1.20 service fee + 8.25% TX tax, min $5.00
-- Live ride tracking with 5-step status bar (Requested → Accepted → En Route → In Progress → Completed)
-- Safety Help modal: Call 911, share ride details to clipboard, report driver, emergency cancel
-- AI Destination Assistant powered by Azure OpenAI — suggests things to do near drop-off
-- Ride history, transactions, and profile with ride preferences (temperature, music, conversation)
+**One state machine for every ride.** All status changes go through `server/utils/rideLifecycle.js`, which defines which moves are legal and who may make them:
 
-### Driver Portal
-- Find & accept available ride requests; complete or cancel active rides
-- Dashboard with today/week/month/year earnings (65% driver cut), weekly bar chart, completion rate
-- My Rides history + detailed earnings payment records
+| Move | Who | Side effects |
+|---|---|---|
+| requested → accepted | An Available driver with no other active ride | Ride records the driver; driver goes on a ride |
+| accepted → in progress | The assigned driver | none |
+| → completed | The assigned driver or an admin | Fare charged once to the rider's saved payment method; driver is free again |
+| → cancelled | The rider, the assigned driver or an admin | A rider cancelling after a driver accepted pays $2.00, waived for safety cancellations |
 
-### Admin Panel
-- Live platform stats: total rides, revenue, active requests, driver count, average fare
-- Rides by day and revenue by day bar charts; ride status distribution; platform health metrics
-- Top 5 drivers leaderboard
-- Full CRUD on all rides (search, filter by status, edit, delete)
-- Full CRUD on all drivers (search, sort by rating/revenue, edit, remove)
+Nothing is charged at booking. Charges are idempotent (a ride can't be billed twice), each payment records whether it was a `fare` or a `cancellation_fee`, and every payment opens as a printable receipt. Illegal moves return clear 403 or 409 errors, like "Finish your current ride before accepting another."
 
-### AI Features
-- **RideFlow Assistant** — floating chat widget (🚗) powered by Azure OpenAI with full RideFlow knowledge system prompt; maintains conversation history; 6 quick-start chips
-- **AI Destination Assistant** — uses the ride's drop-off location (from database) to generate activity suggestions via Azure OpenAI
-- **Strata chatbot** — context-based chatbot with 150+ curated Q&A pairs covering booking, pricing, safety, driver info, and troubleshooting
+**33 automated tests, no cloud accounts needed.** `cd server && npm test` loads the real models and controllers against an in-memory Postgres ([pg-mem](https://github.com/oguimbal/pg-mem)) and simulates each login. The checks cover who can see and change which rides, when fares and fees are charged, who can open which receipt, and that older bookings are settled rather than double-charged.
 
----
+**Maps and routing from open data.** Address autocomplete uses Photon, geocoding uses Nominatim, and OSRM returns the real driving route and distance, drawn on a Leaflet map. Fares follow a published formula: $2.50 base + $1.75 per mile + $1.20 service fee, $5.00 minimum, plus 8.25% Texas sales tax.
 
-## Local Development
+**AI features.** Two endpoints call Azure OpenAI (GPT-4o): a Destination Assistant that suggests things to do near the drop-off of a booked ride, and the RideFlow Assistant, a multi-turn support chat grounded in a system prompt that describes the platform's real rules and pricing. A Strata chat widget with a custom knowledge base of 150+ Q&A pairs also sits on the site.
 
-**Prerequisites:** Node.js ≥ 18, a Neon (or any PostgreSQL) database, a Clerk application, an Azure OpenAI deployment.
+## Design choices
+
+- A custom dark theme with a magenta and purple palette, built in plain CSS.
+- Each role gets its own portal and navigation instead of one screen with hidden buttons.
+- Riders can save ride preferences (temperature, music, conversation) on their profile.
+- Error messages say what to do next instead of just "Forbidden."
+
+## Tech stack
+
+React 18 + Vite, React Router, Leaflet · Node.js + Express 4 · Sequelize 6 on Neon PostgreSQL · Clerk auth · Azure OpenAI · pg-mem for tests · deployed on Render.
+
+## Run it locally
+
+You need Node.js 18+, a PostgreSQL database (Neon works), a Clerk application and an Azure OpenAI deployment.
 
 ```bash
 git clone https://github.com/suhxnitiwari/ridemanagement.git
 cd ridemanagement
+cd server && npm install && cp .env.example .env   # fill in the values below
+cd ../client && npm install                        # create client/.env with the VITE_* values
 
-# Install dependencies
-cd server && npm install
-cd ../client && npm install
-
-# Configure environment
-cp server/.env.example server/.env   # fill in values — see table below
-# create client/.env with VITE_* vars
-
-# Start backend (http://localhost:3001)
-cd server && npm run dev
-
-# Start frontend in a separate terminal (http://localhost:5173)
-cd client && npm run dev
+cd server && npm run dev    # http://localhost:3001
+cd client && npm run dev    # http://localhost:5173, proxies /api to the server
 ```
 
-Vite proxies all `/api/*` requests to `localhost:3001` — no CORS setup needed locally. Sequelize creates and syncs all tables on first boot via `sync({ alter: true })`.
-
----
+Sequelize creates and syncs the tables on first boot. `node seed.js` (in `server/`) resets the database with about 60 sample rides spread over 90 days, so the dashboards have something to show.
 
 ## Environment Variables
 
@@ -168,40 +128,7 @@ All protected endpoints require `Authorization: Bearer <clerk-jwt>`.
 | POST | `/api/ai/destination-suggestions` | Rider | GPT-4o activity suggestions for a destination |
 | POST | `/api/ai/chat` | Any | RideFlow Assistant — multi-turn chat with RideFlow knowledge system prompt |
 
----
-
-## Ride Lifecycle & Billing
-
-Every status change goes through one set of rules in `server/utils/rideLifecycle.js`:
-
-| Move | Who | What else happens |
-|---|---|---|
-| requested → accepted | An **Available** driver with no other active ride | The ride records that driver; the driver goes **on a ride** |
-| accepted → in progress | The assigned driver ("Picked up rider") | — |
-| → completed | The assigned driver or an admin | The fare is charged **once** to the rider's saved payment method; the driver is available again |
-| → cancelled | The rider, the assigned driver or an admin | If a rider cancels **after** a driver accepted, a $2.00 fee is charged (waived for safety cancellations) |
-
-Nothing is charged when a ride is requested. Each payment records what it was for (`fare` or `cancellation_fee`), and every payment opens as a printable receipt for the rider and in the admin **Payments** tab, where admins can mark it refunded or failed.
-
-## Tests
-
-`cd server && npm test` runs the ride and payment rules (33 checks) against an in-memory Postgres, so no database or Clerk account is needed: who can see and change which rides, when fares and fees are charged, and who can open which receipt.
-
-## Authentication & Security
-
-Roles are stored in **Clerk `publicMetadata`** (`"role": "rider" | "driver" | "admin"`). Role assignment happens at `/onboarding` after sign-up via a server-side Clerk SDK call — the client cannot self-assign a role.
-
-Every protected route independently fetches the user from Clerk on each request and checks the role claim — the JWT payload alone is never trusted for authorization.
-
-**Row-level security:** Riders can only read and modify their own ride and payment records. The rides controller filters `WHERE rider_id = <authenticated rider>` for all non-admin requests. Drivers can only update rides assigned to them.
-
-The client refreshes the Clerk token every 55 seconds via `getToken()` and updates the global Axios `Authorization` header.
-
----
-
-## Database Schema
-
-Managed by Sequelize on Neon PostgreSQL. All changes are applied non-destructively via `sync({ alter: true })` on startup.
+## Database schema
 
 ```
 riders    (rider_id, first_name, last_name, email, phone_number,
@@ -218,32 +145,8 @@ payments  (payment_id, ride_id → rides, rider_id → riders,
            amount, payment_method, status, card_last_four, created_at, updated_at)
 ```
 
----
+## Ownership
 
-## Deployment
+© 2026 Suhani Tiwari. **All rights reserved.** This is my original work. The code is public so you can see how I build, not so you can reuse it: copying, reusing or republishing any part of it, including for a portfolio or a class assignment, is not permitted without my written permission. See [LICENSE](LICENSE).
 
-Both services run on [Render](https://render.com).
-
-**Backend — Web Service**
-
-| Setting | Value |
-|---|---|
-| Build command | `cd server && npm install` |
-| Start command | `cd server && node index.js` |
-
-**Frontend — Static Site**
-
-| Setting | Value |
-|---|---|
-| Build command | `cd client && npm install && npm run build` |
-| Publish directory | `client/dist` |
-
-> **Cold-start note:** Render free-tier services sleep after 15 minutes of inactivity. The first request after sleep can take 30–60 s.
-
----
-
-## Course Context
-
-**University:** The University of Texas at Austin, McCombs School of Business  
-**Course:** MIS 372T — Full-Stack Web Application Development, Spring 2026  
-**Author:** Suhani Tiwari · [github.com/suhxnitiwari](https://github.com/suhxnitiwari)
+Built by [Suhani Tiwari](https://suhanitiwari.com).
